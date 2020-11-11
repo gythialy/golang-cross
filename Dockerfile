@@ -4,8 +4,8 @@ LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 
 COPY entrypoint.sh /
 
-ARG GOLANG_VERSION=1.15.3
-ARG GOLANG_DIST_SHA=010a88df924a81ec21b293b5da8f9b11c176d27c0ee3962dc1738d2352d3c02d
+ARG GOLANG_VERSION=1.15.4
+ARG GOLANG_DIST_SHA=eb61005f0b932c93b424a3a4eaa67d72196c79129d9a3ea8578047683e2c80d5
 
 # update golang
 RUN \
