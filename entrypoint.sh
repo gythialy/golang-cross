@@ -1,16 +1,39 @@
 #!/usr/bin/env bash
 
-if [[ -z "${PRIVATE_KEY}" ]]; then
-    echo "can not find any private key, ignore..."
-else
-    key_file=$HOME/key.asc
-    echo -e "${PRIVATE_KEY}" | base64 -d >"$key_file"
-    echo "save key to $key_file"
-
-    if gpg --allow-secret-key-import --import "${key_file}"; then
-        gpg --list-secret-keys --keyid-format long
-    fi
-    rm -rf "$key_file"
+# Get the GPG fingerprint with gpg --with-keygrip --list-secret-keys
+if [[ -z "${PKG_SIGNING_KEY}" || -z "${NFPM_STD_PASSPHRASE}" || -z "${GPG_FINGERPRINT}" ]]; then
+    echo "No private key set, packages cannnot be signed. Set PKG_SIGNING_KEY, NFPM_STD_PASSPHRASE and GPG_FINGERPRINT"
+    exit 1
 fi
 
-goreleaser "$@"
+echo Configuring gpg-agent to accept a passphrase
+mkdir ~/.gnupg && chmod 700 ~/.gnupg
+cat > ~/.gnupg/gpg-agent.conf <<EOF
+disable-scdaemon
+default-cache-ttl 3600
+max-cache-ttl 3600
+allow-preset-passphrase
+debug-level expert
+log-file /gpg-agent.log
+allow-loopback-pinentry
+EOF
+gpg-connect-agent reloadagent /bye
+# This is what makes gpg2 not attempt pinentry
+gpg-connect-agent --verbose "OPTION pinentry-mode=loopback" /bye
+
+echo Configuring gpg not to look for a tty
+cat > ~/.gnupg/gpg.conf <<EOF
+no-tty
+EOF
+
+# nfpm demands the file name on the filesystem
+cat > tyk.io.signing.key <<EOF
+$PKG_SIGNING_KEY
+EOF
+
+chmod 400 tyk.io.signing.key
+# archive signing can work with gpg
+/usr/lib/gnupg2/gpg-preset-passphrase --passphrase $NFPM_STD_PASSPHRASE --preset $GPG_FINGERPRINT
+gpg --import --batch --yes tyk.io.signing.key
+
+goreleaser $* || ( cat /gpg-agent.log; exit 1 )

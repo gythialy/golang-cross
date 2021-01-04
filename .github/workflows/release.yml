@@ -1,0 +1,38 @@
+name: Publish Images
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+
+  build:
+ 
+    strategy:
+      fail-fast: false
+      matrix:
+        gover: [ 1.12, 1.15 ]
+
+    runs-on: ubuntu-latest
+ 
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: docker/setup-buildx-action@v1
+    
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+            
+    - name: Build and push go ${{ matrix.gover }} based image
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: alephnull/golang-cross:${{ matrix.gover }}
+        build-args: |
+          GO_VERSION=${{ matrix.gover }}
