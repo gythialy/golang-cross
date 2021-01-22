@@ -11,13 +11,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build and Publish the Docker image to DockerHub
-      uses: gythialy/Publish-Docker-Github-Action@master
+      uses: docker://goreng/publish-docker-github-action:v2.5
       with:
         name: goreng/golang-cross
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
     - name: Build and Publish the Docker image to GitHub Packages
-      uses: gythialy/Publish-Docker-Github-Action@master
+      uses: docker://goreng/publish-docker-github-action:v2.5
       with:
         name: docker.pkg.github.com/gythialy/golang-cross/xcgo
         username: gythialy
