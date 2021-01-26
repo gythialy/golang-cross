@@ -1,4 +1,4 @@
-# golang parameters
+# Tested for arm64 osx (sdk ver below) amd64 
 ARG GO_VERSION=1.15.1
 
 # OS-X SDK parameters
@@ -26,15 +26,12 @@ RUN echo "${OSX_SDK_SUM}"  "${OSX_CROSS_PATH}/tarballs/${OSX_SDK}.tar.xz" | sha2
 FROM base AS osx-cross-base
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
-RUN set -x; echo "Starting image build for Debian Stretch" \
+RUN set -x; echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
  && dpkg --add-architecture arm64                      \
  && dpkg --add-architecture armel                      \
  && dpkg --add-architecture armhf                      \
- && dpkg --add-architecture i386                       \
  && dpkg --add-architecture mips                       \
  && dpkg --add-architecture mipsel                     \
- && dpkg --add-architecture powerpc                    \
- && dpkg --add-architecture ppc64el                    \
  && apt-get update                                     \
  && apt-get install -y -q                              \
         autoconf                                       \
@@ -50,7 +47,6 @@ RUN set -x; echo "Starting image build for Debian Stretch" \
         crossbuild-essential-armel                     \
         crossbuild-essential-armhf                     \
         crossbuild-essential-mipsel                    \
-        crossbuild-essential-ppc64el                   \
         curl                                           \
         devscripts                                     \
         gdb                                            \
@@ -70,12 +66,11 @@ RUN set -x; echo "Starting image build for Debian Stretch" \
         lzma-dev                                       \
         openssl                                        \
         mingw-w64                                      \
-        libssl-dev                                  && \
-				apt -y autoremove && \
-    		apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+	libssl-dev                                     \
+&& apt -y autoremove                                   \
+&& apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # FIXME: install gcc-multilib
-# FIXME: add mips and powerpc architectures
 
 FROM osx-cross-base AS osx-cross
 ARG OSX_CROSS_COMMIT
@@ -94,20 +89,21 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 COPY --from=osx-cross "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
 ENV PATH=${OSX_CROSS_PATH}/target/bin:$PATH
+
+# install docker
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
+	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
+	apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io
+
 # install goreleaser
-ARG GORELEASER_VERSION=0.151.1
-ARG GORELEASER_SHA=531ae9e1329d9150cfc98bf7e3938f555071b7c3f562f787b9bb718ddc5fd28a
+# this is useful for testing locally. In the action, the latest goreleaser is installed.
+ARG GORELEASER_VERSION=0.155.0
+ARG GORELEASER_SHA=2a33aa15933cfd5bd2b714860c4876fa76f1fab8f46a7c6d29a8e32c7f9445f2
 RUN GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
 	wget ${GORELEASER_DOWNLOAD_URL}; \
 			echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1; \
 			tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser; \
 			rm $GORELEASER_DOWNLOAD_FILE;
-# install docker
-RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
-	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
-	apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io
 
-COPY entrypoint.sh /
-
-ENTRYPOINT [ "bash", "/entrypoint.sh" ]
+COPY unlock-agent.sh /

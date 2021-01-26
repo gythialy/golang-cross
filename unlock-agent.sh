@@ -26,7 +26,7 @@ cat > ~/.gnupg/gpg.conf <<EOF
 no-tty
 EOF
 
-# nfpm demands the file name on the filesystem
+# nfpm demands this on the filesystem
 cat > tyk.io.signing.key <<EOF
 $PKG_SIGNING_KEY
 EOF
@@ -34,6 +34,4 @@ EOF
 chmod 400 tyk.io.signing.key
 # archive signing can work with gpg
 /usr/lib/gnupg2/gpg-preset-passphrase --passphrase $NFPM_STD_PASSPHRASE --preset $GPG_FINGERPRINT
-gpg --import --batch --yes tyk.io.signing.key
-
-goreleaser $* || ( cat /gpg-agent.log; exit 1 )
+gpg --import --batch --yes tyk.io.signing.key || ( cat /gpg-agent.log; exit 1 )
