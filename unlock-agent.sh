@@ -27,9 +27,7 @@ no-tty
 EOF
 
 # nfpm demands this on the filesystem
-cat > tyk.io.signing.key <<EOF
-$PKG_SIGNING_KEY
-EOF
+echo "$PKG_SIGNING_KEY" > tyk.io.signing.key
 
 chmod 400 tyk.io.signing.key
 # archive signing can work with gpg
