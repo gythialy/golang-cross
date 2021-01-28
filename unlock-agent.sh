@@ -6,9 +6,6 @@ if [[ -z "${PKG_SIGNING_KEY}" || -z "${NFPM_STD_PASSPHRASE}" || -z "${GPG_FINGER
     exit 1
 fi
 
-# Cleanup private key
-trap "rm -fv tyk.io.signing.key" EXIT
-
 echo Configuring gpg-agent to accept a passphrase
 mkdir ~/.gnupg && chmod 700 ~/.gnupg
 cat > ~/.gnupg/gpg-agent.conf <<EOF
@@ -35,4 +32,4 @@ echo "$PKG_SIGNING_KEY" > tyk.io.signing.key
 chmod 400 tyk.io.signing.key
 # archive signing can work with gpg
 /usr/lib/gnupg2/gpg-preset-passphrase --passphrase $NFPM_STD_PASSPHRASE --preset $GPG_FINGERPRINT
-gpg --import --batch --yes tyk.io.signing.key #|| ( cat /gpg-agent.log; exit 1 )
+gpg --import --batch --yes tyk.io.signing.key || ( cat /gpg-agent.log; exit 1 )
