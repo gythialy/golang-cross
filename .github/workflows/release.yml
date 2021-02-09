@@ -33,6 +33,6 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         push: true
-        tags: alephnull/golang-cross:${{ matrix.gover }}
+        tags: tykio/golang-cross:${{ matrix.gover }}
         build-args: |
           GO_VERSION=${{ matrix.gover }}
