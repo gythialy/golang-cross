@@ -67,6 +67,7 @@ RUN set -x; echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" 
         openssl                                        \
         mingw-w64                                      \
 	libssl-dev                                     \
+	jq                                             \
 && apt -y autoremove                                   \
 && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
