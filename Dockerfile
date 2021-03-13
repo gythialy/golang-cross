@@ -10,11 +10,11 @@ ARG GOLANG_DIST_SHA=013a489ebb3e24ef3d915abe5b94c3286c070dfe0818d5bca8108f1d6e84
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
-	wget -O go.tgz "$GOLANG_DIST"; \
-	echo "${GOLANG_DIST_SHA} *go.tgz" | sha256sum -c -; \
-	rm -rf /usr/local/go; \
-	tar -C /usr/local -xzf go.tgz; \
-	rm go.tgz; \
+	wget -O go.tgz "$GOLANG_DIST" && \
+	echo "${GOLANG_DIST_SHA} *go.tgz" | sha256sum -c - && \
+	rm -rf /usr/local/go && \
+	tar -C /usr/local -xzf go.tgz && \
+	rm go.tgz && \
 	go version;
 
 # install goreleaser
