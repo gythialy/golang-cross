@@ -26,16 +26,18 @@ RUN  \
 	wget ${GORELEASER_DOWNLOAD_URL}; \
 			echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1; \
 			tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser; \
-			rm $GORELEASER_DOWNLOAD_FILE;
+			rm $GORELEASER_DOWNLOAD_FILE; \
+			goreleaser -v;
 
 # install git-chglog
-ARG GIT_CHGLOG_VERSION=0.10.0
+ARG GIT_CHGLOG_VERSION=0.14.0
 RUN \
 	GIT_CHGLOG_DOWNLOAD_FILE=git-chglog_linux_amd64.tar.gz && \
 	GIT_CHGLOG_DOWNLOAD_URL=https://github.com/git-chglog/git-chglog/releases/download/v${GIT_CHGLOG_VERSION}/git-chglog_${GIT_CHGLOG_VERSION}_linux_amd64.tar.gz &&\
 	wget -O ${GIT_CHGLOG_DOWNLOAD_FILE} ${GIT_CHGLOG_DOWNLOAD_URL}; \
 	tar -xzf $GIT_CHGLOG_DOWNLOAD_FILE -C /usr/bin/ git-chglog; \
 	rm $GIT_CHGLOG_DOWNLOAD_FILE && \
+	git-chglog -v && \
 	chmod +x /entrypoint.sh
 
 ENTRYPOINT ["bash", "/entrypoint.sh"]
