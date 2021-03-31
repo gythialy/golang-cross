@@ -4,17 +4,18 @@ LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 
 COPY entrypoint.sh /
 
-ARG GOLANG_VERSION=1.16.2
+ARG GO_VERSION=1.16.2
 ARG GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8
 
 # update golang
 RUN \
-	GOLANG_DIST=https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz && \
-	wget -O go.tgz "$GOLANG_DIST"; \
-	echo "${GOLANG_DIST_SHA} *go.tgz" | sha256sum -c -; \
-	rm -rf /usr/local/go; \
-	tar -C /usr/local -xzf go.tgz; \
-	rm go.tgz; 
+	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
+	wget -O go.tgz "$GOLANG_DIST" && \
+	echo "${GOLANG_DIST_SHA} *go.tgz" | sha256sum -c - && \
+	rm -rf /usr/local/go && \
+	tar -C /usr/local -xzf go.tgz && \
+	rm go.tgz && \
+	go version;
 
 # install goreleaser
 ARG GORELEASER_VERSION=0.162.0
