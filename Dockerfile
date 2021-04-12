@@ -7,9 +7,9 @@ ARG OSX_SDK_SUM=aee7b132a4b10cc26ab9904706412fd0907f5b8b660251e465647d8763f9f009
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
-ARG OSX_CROSS_COMMIT=2733413b6847c1489d6230f062d3293e6f42a021
+ARG OSX_CROSS_COMMIT=c2ad5e859d12
 
-FROM golang:${GO_VERSION}-buster AS base
+FROM golang:${GO_VERSION}-stretch AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
@@ -28,12 +28,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN set -x; echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
  && dpkg --add-architecture arm64                      \
- && dpkg --add-architecture armel                      \
- && dpkg --add-architecture armhf                      \
- && dpkg --add-architecture mips                       \
- && dpkg --add-architecture mipsel                     \
  && apt-get update                                     \
- && apt-get install -y -q                              \
+ && apt-get dist-upgrade -y -q                         \
         autoconf                                       \
         automake                                       \
         autotools-dev                                  \
@@ -44,28 +40,20 @@ RUN set -x; echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" 
         build-essential                                \
         clang                                          \
         crossbuild-essential-arm64                     \
-        crossbuild-essential-armel                     \
-        crossbuild-essential-armhf                     \
-        crossbuild-essential-mipsel                    \
         curl                                           \
-        devscripts                                     \
-        gdb                                            \
         git-core                                       \
         libtool                                        \
-        llvm                                           \
-        mercurial                                      \
         multistrap                                     \
         patch                                          \
-        software-properties-common                     \
-        subversion                                     \
         wget                                           \
         xz-utils                                       \
+        lsb-release                                    \
         cmake                                          \
+        apt-transport-https                            \
         qemu-user-static                               \
         libxml2-dev                                    \
         lzma-dev                                       \
         openssl                                        \
-        mingw-w64                                      \
 	libssl-dev                                     \
 	jq                                             \
 && apt -y autoremove                                   \
@@ -91,10 +79,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 COPY --from=osx-cross "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
 ENV PATH=${OSX_CROSS_PATH}/target/bin:$PATH
 
-# install docker
+# install docker cli and upgrade git so that it is new enough for the github action
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
-	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
-	apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io
+	echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
+	echo "deb http://deb.debian.org/debian stretch-backports main" > /etc/apt/sources.list.d/backports.list && \
+	apt-get update && apt-get install -y docker-ce-cli git/stretch-backports
 
 # install goreleaser
 # this is useful for testing locally. In the action, the latest goreleaser is installed.

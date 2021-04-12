@@ -1,0 +1,47 @@
+FROM golang:1.15-stretch AS base
+
+ARG APT_MIRROR
+RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
+ && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
+ENV OSX_CROSS_PATH=/osxcross
+
+ARG DEBIAN_FRONTEND=noninteractive
+# Install deps
+RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
+ && dpkg --add-architecture arm64                      \
+ && apt-get update                                     \
+ && apt-get dist-upgrade -y -q                         \
+        autoconf                                       \
+        automake                                       \
+        autotools-dev                                  \
+        bc                                             \
+        binfmt-support                                 \
+        binutils-multiarch                             \
+        binutils-multiarch-dev                         \
+        build-essential                                \
+        clang                                          \
+        crossbuild-essential-arm64                     \
+        curl                                           \
+        gdb                                            \
+        git-core                                       \
+        libtool                                        \
+        multistrap                                     \
+        wget                                           \
+        xz-utils                                       \
+        cmake                                          \
+        libxml2-dev                                    \
+        lzma-dev                                       \
+        qemu-user-static                               \
+        openssl                                        \
+	libssl-dev                                     \
+	jq
+
+# FIXME: install gcc-multilib
+
+ARG OSX_SDK=MacOSX10.15.sdk
+WORKDIR $OSX_CROSS_PATH
+RUN git clone https://github.com/tpoechtrager/osxcross.git . \
+    && git checkout c2ad5e859d12
+COPY ${OSX_SDK}.tar.xz "${OSX_CROSS_PATH}/tarballs/${OSX_SDK}.tar.xz"
+
+RUN UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN} OCDEBUG=1 ./build.sh
