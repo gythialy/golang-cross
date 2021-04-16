@@ -1,10 +1,6 @@
 # golang parameters
 ARG GO_VERSION=1.16.2
 
-# OS-X SDK parameters
-ARG OSX_SDK=MacOSX11.1.sdk
-ARG OSX_SDK_SUM=dbd63f8a8e2cdb5f85c2ba2c5ffbc61ea4ee115b50437c6202e222e8263ed2bb
-
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
 ARG OSX_CROSS_COMMIT=0c6186e32d170abcccc0ca39bd14f6b91ac32289
@@ -16,12 +12,7 @@ RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/
  && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
 ENV OSX_CROSS_PATH=/osxcross
 
-FROM base AS osx-sdk
-ARG OSX_SDK
-ARG OSX_SDK_SUM
-
-COPY ${OSX_SDK}.tar.xz "${OSX_CROSS_PATH}/tarballs/${OSX_SDK}.tar.xz"
-RUN echo "${OSX_SDK_SUM}"  "${OSX_CROSS_PATH}/tarballs/${OSX_SDK}.tar.xz" | sha256sum -c -
+FROM goreng/osx-sdk:macOS-11.1 AS osx-sdk
 
 FROM base AS osx-cross-base
 ARG DEBIAN_FRONTEND=noninteractive
