@@ -55,6 +55,8 @@ RUN set -x; echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" 
         lzma-dev                                       \
         openssl                                        \
 	libssl-dev                                     \
+	unzip                                          \
+	sudo                                           \
 	jq                                             \
 && apt -y autoremove                                   \
 && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
