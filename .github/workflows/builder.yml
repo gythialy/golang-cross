@@ -10,7 +10,7 @@ jobs:
     - 
       uses: actions/checkout@v2
     - name: Build and Publish the Docker image to DockerHub
-      uses: elgohr/Publish-Docker-Github-Action@3.02
+      uses: elgohr/Publish-Docker-Github-Action@3.03
       with:
         name: goreng/golang-cross-builder
         dockerfile: Dockerfile_builder
