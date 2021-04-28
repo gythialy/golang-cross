@@ -99,3 +99,4 @@ RUN GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 			rm $GORELEASER_DOWNLOAD_FILE;
 
 COPY unlock-agent.sh /
+COPY daemon.json /etc/docker/daemon.json
