@@ -89,8 +89,8 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
 
 # install goreleaser
 # this is useful for testing locally. In the action, the latest goreleaser is installed.
-ARG GORELEASER_VERSION=0.155.0
-ARG GORELEASER_SHA=2a33aa15933cfd5bd2b714860c4876fa76f1fab8f46a7c6d29a8e32c7f9445f2
+ARG GORELEASER_VERSION=0.164.0
+ARG GORELEASER_SHA=d9cd39b1ac388cbf2b259b380d57726cd5d6aefea5d2073b0ee1f79f41f5766e
 RUN GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
 	wget ${GORELEASER_DOWNLOAD_URL}; \
