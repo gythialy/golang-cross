@@ -87,10 +87,10 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
 	echo "deb http://deb.debian.org/debian stretch-backports main" > /etc/apt/sources.list.d/backports.list && \
 	apt-get update && apt-get install -y docker-ce-cli git/stretch-backports
 
-# install goreleaser
-# this is useful for testing locally. In the action, the latest goreleaser is installed.
-ARG GORELEASER_VERSION=0.164.0
-ARG GORELEASER_SHA=d9cd39b1ac388cbf2b259b380d57726cd5d6aefea5d2073b0ee1f79f41f5766e
+# install goreleaser that does not try docker manifest rm
+# https://github.com/goreleaser/goreleaser/issues/2192
+ARG GORELEASER_VERSION=0.160.0
+ARG GORELEASER_SHA=651b1f5891b23dc5ea554d62dbef87954922dfdd187e662e09b47556e0744c70
 RUN GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
 	wget ${GORELEASER_DOWNLOAD_URL}; \
