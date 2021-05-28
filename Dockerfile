@@ -1,4 +1,4 @@
-FROM goreng/golang-cross-builder:v1.16.2
+FROM docker.pkg.github.com/gythialy/golang-cross/golang-cross-builder:v1.16.2
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 

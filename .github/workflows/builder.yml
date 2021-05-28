@@ -9,11 +9,11 @@ jobs:
     steps:
     - 
       uses: actions/checkout@v2
-    - name: Build and Publish the Docker image to DockerHub
+    - name: Build and Publish the Docker image to GitHub Packages
       uses: elgohr/Publish-Docker-Github-Action@3.04
       with:
-        name: goreng/golang-cross-builder
-        dockerfile: Dockerfile_builder
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        name: gythialy/golang-cross/golang-cross-builder
+        username: gythialy
+        password: ${{ secrets.DEPLOY_TOKEN }}
+        registry: docker.pkg.github.com
         tags: "latest,v1.16.2"
