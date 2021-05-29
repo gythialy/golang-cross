@@ -4,8 +4,8 @@ LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 
 COPY entrypoint.sh /
 
-ARG GO_VERSION=1.16.3
-ARG GOLANG_DIST_SHA=951a3c7c6ce4e56ad883f97d9db74d3d6d80d5fec77455c6ada6c1f7ac4776d2
+ARG GO_VERSION=1.16.4
+ARG GOLANG_DIST_SHA=7154e88f5a8047aad4b80ebace58a059e36e7e2e4eb3b383127a28c711b4ff59
 
 # update golang
 RUN \
@@ -18,8 +18,8 @@ RUN \
 	go version;
 
 # install goreleaser
-ARG GORELEASER_VERSION=0.162.0
-ARG GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e
+ARG GORELEASER_VERSION=0.166.1
+ARG GORELEASER_SHA=229d76cbb306225aa1af884692ad8e34315846c81a352ddc59d02afd8fbcf647
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
@@ -30,8 +30,8 @@ RUN  \
 	goreleaser -v;
 
 # install git-chglog
-ARG GIT_CHGLOG_VERSION=0.14.1
-ARG GIT_CHGLOG_SHA=da787394f042603f7baf95183ea3914ac9a840429f5fd5e51caa0ce8848966ce
+ARG GIT_CHGLOG_VERSION=0.14.2
+ARG GIT_CHGLOG_SHA=90a940f47ae6fedce5b5995f22dcae6159e54b86418e08a9a911705d36dbd52e
 RUN \
 	GIT_CHGLOG_DOWNLOAD_FILE=git-chglog_linux_amd64.tar.gz && \
 	GIT_CHGLOG_DOWNLOAD_URL=https://github.com/git-chglog/git-chglog/releases/download/v${GIT_CHGLOG_VERSION}/git-chglog_${GIT_CHGLOG_VERSION}_linux_amd64.tar.gz && \
