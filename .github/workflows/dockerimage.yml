@@ -18,3 +18,12 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
         registry: docker.pkg.github.com
         tag_names: true
+    
+    - name: Build and Publish the Docker image to ghcr.io
+      uses: elgohr/Publish-Docker-Github-Action@3.04
+      with:
+        name: gythialy/golang-cross
+        username: gythialy
+        password: ${{ secrets.DEPLOY_TOKEN }}
+        registry: ghcr.io
+        tag_names: true
