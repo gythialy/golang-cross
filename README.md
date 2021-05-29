@@ -8,22 +8,22 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
 
   - golang-cross
     ```
-    docker pull docker.pkg.github.com/gythialy/golang-cross/xcgo:latest
+    docker pull ghcr.io/gythialy/golang-cross:latest
     ```
   - golang-cross-builder
     ```
-    docker pull docker.pkg.github.com/gythialy/golang-cross-builder
+    docker pull ghcr.io/gythialy/golang-cross-builder:v1.16.2
     ```
 
 - Build your own images
   - Build base image (optional)
     ```
-     docker build -f Dockerfile_builder -t docker.pkg.github.com/gythialy/golang-cross/golang-cross-builder:v1.16.2 .
+     docker build -f Dockerfile_builder -t ghcr.io/gythialy/golang-cross-builder:v1.16.2 .
     ```
     > Please follow the guide to [pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first
   - Build golang-cross image
     ```
-    docker build --build-arg GO_VERSION=1.16.2 --build-arg GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8 --build-arg GORELEASER_VERSION=0.162.0 --build-arg  GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e -f Dockerfile -t docker.pkg.github.com/gythialy/golang-cross/xcgo:latest .
+    docker build --build-arg GO_VERSION=1.16.2 --build-arg GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8 --build-arg GORELEASER_VERSION=0.162.0 --build-arg  GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e -f Dockerfile -t ghcr.io/gythialy/golang-cross:latest .
     ```
     > The default arguments can be overridden with `--build-arg`
 ## How to use
@@ -44,7 +44,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
     -v $PWD:/go/src/github.com/qlcchain/go-qlc \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -w /go/src/github.com/qlcchain/go-qlc \
-    docker.pkg.github.com/gythialy/golang-cross/xcgo:latest --snapshot --rm-dist
+    ghcr.io/gythialy/golang-cross:latest --snapshot --rm-dist
   ```
 
 ## Practical Examples

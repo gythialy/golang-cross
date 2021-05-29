@@ -1,6 +1,7 @@
 FROM ghcr.io/gythialy/golang-cross-builder:v1.16.2
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
+LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 
 COPY entrypoint.sh /
 
