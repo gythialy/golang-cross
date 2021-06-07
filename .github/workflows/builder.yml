@@ -15,6 +15,7 @@ jobs:
         name: gythialy/golang-cross/golang-cross-builder
         username: gythialy
         password: ${{ secrets.DEPLOY_TOKEN }}
+        dockerfile: Dockerfile.builder
         registry: docker.pkg.github.com
         tags: "latest,v1.16.2"
     
@@ -24,5 +25,6 @@ jobs:
         name: gythialy/golang-cross-builder
         username: gythialy
         password: ${{ secrets.DEPLOY_TOKEN }}
+        dockerfile: Dockerfile.builder
         registry: ghcr.io
         tags: "latest,v1.16.2"

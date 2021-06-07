@@ -28,7 +28,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
       --build-arg GORELEASER_VERSION=0.162.0 \ 
       --build-arg GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e \ 
       -f Dockerfile \ 
-      -t docker.pkg.github.com/gythialy/golang-cross/xcgo:latest .
+      -t ghcr.io/gythialy/golang-cross:latest .
     ```
     > The default arguments can be overridden with `--build-arg`
 ## How to use
@@ -44,12 +44,13 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
 - Run docker container to build the binaries
 
   ```bash
-  docker run --rm --privileged \
-    -e PRIVATE_KEY=${PRIVATE_KEY} \
-    -v $PWD:/go/src/github.com/qlcchain/go-qlc \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -w /go/src/github.com/qlcchain/go-qlc \
-    ghcr.io/gythialy/golang-cross:latest --snapshot --rm-dist
+    docker run --rm --privileged \
+      -e PRIVATE_KEY=$(PRIVATE_KEY) \
+      -v $(CURDIR):/golang-cross-example \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v $(GOPATH)/src:/go/src \
+      -w /golang-cross-example \
+      ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --snapshot --rm-dist
   ```
 
 ## Practical Examples
