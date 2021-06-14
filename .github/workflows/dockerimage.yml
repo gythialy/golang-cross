@@ -27,3 +27,6 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
         registry: ghcr.io
         tag_names: true
+
+    - name: test example
+      run: cd example && make snapshot
