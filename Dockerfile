@@ -1,5 +1,5 @@
 # Tested for arm64 osx (sdk ver below) amd64 
-ARG GO_VERSION=1.15.8
+ARG GO_VERSION=1.15.13
 
 # OS-X SDK parameters
 ARG OSX_SDK=MacOSX10.15.sdk
