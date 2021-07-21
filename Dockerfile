@@ -5,8 +5,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 
 COPY entrypoint.sh /
 
-ARG GO_VERSION=1.16.5
-ARG GOLANG_DIST_SHA=b12c23023b68de22f74c0524f10b753e7b08b1504cb7e417eccebdd3fae49061
+ARG GO_VERSION=1.16.6
+ARG GOLANG_DIST_SHA=be333ef18b3016e9d7cb7b1ff1fdb0cac800ca0be4cf2290fe613b3d069dfe0d
 
 # update golang
 RUN \
@@ -19,8 +19,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=0.169.0
-ARG GORELEASER_SHA=f139fe6191da2209192f43c3a77220067f99c623c78096c2315cbe93facb5455
+ARG GORELEASER_VERSION=0.173.2
+ARG GORELEASER_SHA=bb4fa802d69c8d7f925a165f6d5b8b215cad25bb8be9456761e876124cbcfcf7
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
