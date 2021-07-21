@@ -16,7 +16,7 @@ RUN \
 	rm -rf /usr/local/go && \
 	tar -C /usr/local -xzf go.tgz && \
 	rm go.tgz && \
-	go version;
+	go version
 
 # install goreleaser
 ARG GORELEASER_VERSION=0.169.0
@@ -24,11 +24,11 @@ ARG GORELEASER_SHA=f139fe6191da2209192f43c3a77220067f99c623c78096c2315cbe93facb5
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
-	wget ${GORELEASER_DOWNLOAD_URL}; \
-	echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1; \
-	tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser; \
-	rm $GORELEASER_DOWNLOAD_FILE; \
-	goreleaser -v;
+	wget ${GORELEASER_DOWNLOAD_URL} && \
+	echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+	tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser && \
+	rm $GORELEASER_DOWNLOAD_FILE && \
+	goreleaser -v
 
 # install git-chglog
 ARG GIT_CHGLOG_VERSION=0.14.2
@@ -36,11 +36,11 @@ ARG GIT_CHGLOG_SHA=90a940f47ae6fedce5b5995f22dcae6159e54b86418e08a9a911705d36dbd
 RUN \
 	GIT_CHGLOG_DOWNLOAD_FILE=git-chglog_linux_amd64.tar.gz && \
 	GIT_CHGLOG_DOWNLOAD_URL=https://github.com/git-chglog/git-chglog/releases/download/v${GIT_CHGLOG_VERSION}/git-chglog_${GIT_CHGLOG_VERSION}_linux_amd64.tar.gz && \
-	wget -O ${GIT_CHGLOG_DOWNLOAD_FILE} ${GIT_CHGLOG_DOWNLOAD_URL}; \
-	echo "$GIT_CHGLOG_SHA $GIT_CHGLOG_DOWNLOAD_FILE" | sha256sum -c - || exit 1; \
-	tar -xzf $GIT_CHGLOG_DOWNLOAD_FILE -C /usr/bin/ git-chglog; \
-	rm $GIT_CHGLOG_DOWNLOAD_FILE; \
-	git-chglog -v; \
+	wget -O ${GIT_CHGLOG_DOWNLOAD_FILE} ${GIT_CHGLOG_DOWNLOAD_URL} && \
+	echo "$GIT_CHGLOG_SHA $GIT_CHGLOG_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+	tar -xzf $GIT_CHGLOG_DOWNLOAD_FILE -C /usr/bin/ git-chglog && \
+	rm $GIT_CHGLOG_DOWNLOAD_FILE && \
+	git-chglog -v && \
 	chmod +x /entrypoint.sh
 
 ENTRYPOINT ["bash", "/entrypoint.sh"]

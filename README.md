@@ -53,7 +53,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
       ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --snapshot --rm-dist
   ```
 
-## Practical Examples
+## Practical example
 
 - [.goreleaser.yml](example/.goreleaser.yml)
 - [Makefile](example/Makefile#L35-L42)
