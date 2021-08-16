@@ -1,5 +1,5 @@
 # golang parameters
-ARG GO_VERSION=1.16.6
+ARG GO_VERSION=1.16.7
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
