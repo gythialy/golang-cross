@@ -43,6 +43,17 @@ RUN \
 	git-chglog -v && \
 	chmod +x /entrypoint.sh
 
+# install Docker CLI
+ARG DOCKER_CLI_VERSION=20.10.8
+ARG DOCKER_CLI_SHA=7ea11ecb100fdc085dbfd9ab1ff380e7f99733c890ed815510a5952e5d6dd7e0
+RUN  \
+    DOCKER_CLI_DOWNLOAD_FILE=docker-${DOCKER_CLI_VERSION}.tgz && \
+    curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz && \
+    echo "$DOCKER_CLI_SHA $DOCKER_CLI_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+    tar xzvf docker-${DOCKER_CLI_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
+    rm docker-${DOCKER_CLI_VERSION}.tgz && \
+    docker -v
+
 ENTRYPOINT ["bash", "/entrypoint.sh"]
 
 # CMD ["goreleaser", "-v"]
