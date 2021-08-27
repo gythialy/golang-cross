@@ -1,5 +1,5 @@
 # Tested for arm64 osx (sdk ver below) amd64 
-ARG GO_VERSION=1.15.13
+ARG GO_VERSION=1.15.15
 
 # OS-X SDK parameters
 ARG OSX_SDK=MacOSX10.15.sdk
@@ -7,9 +7,9 @@ ARG OSX_SDK_SUM=aee7b132a4b10cc26ab9904706412fd0907f5b8b660251e465647d8763f9f009
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
-ARG OSX_CROSS_COMMIT=c2ad5e859d12
+ARG OSX_CROSS_COMMIT=2733413b6847c1489d6230f062d3293e6f42a021
 
-FROM golang:${GO_VERSION}-stretch AS base
+FROM golang:${GO_VERSION}-buster AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
@@ -81,16 +81,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 COPY --from=osx-cross "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
 ENV PATH=${OSX_CROSS_PATH}/target/bin:$PATH
 
-# install docker cli and upgrade git so that it is new enough for the github action
+# install docker cli
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
 	echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
-	echo "deb http://deb.debian.org/debian stretch-backports main" > /etc/apt/sources.list.d/backports.list && \
-	apt-get update && apt-get install -y docker-ce-cli git/stretch-backports
+	apt-get update && apt-get install -y docker-ce-cli
 
-# install goreleaser that does not try docker manifest rm
-# https://github.com/goreleaser/goreleaser/issues/2192
-ARG GORELEASER_VERSION=0.160.0
-ARG GORELEASER_SHA=651b1f5891b23dc5ea554d62dbef87954922dfdd187e662e09b47556e0744c70
+ARG GORELEASER_VERSION=0.176.0
+ARG GORELEASER_SHA=13bf8ef4ec33d4f3ff2d2c7c02361946e29d69093cf7102e46dcb49e48a31435
 RUN GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
 	wget ${GORELEASER_DOWNLOAD_URL}; \
