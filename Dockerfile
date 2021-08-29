@@ -54,6 +54,17 @@ RUN  \
     rm docker-${DOCKER_CLI_VERSION}.tgz && \
     docker -v
 
+# install Buildx
+ARG BUILDX_VERSION=0.6.2
+ARG BUILDX_SHA=c2b374eb2f9cb71d6968059623d4ec3b53aa5873fce24595ff23c061c21d5384
+RUN \
+    BUILDX_DOWNLOAD_FILE=buildx-v${BUILDX_VERSION}.linux-amd64 && \
+    wget https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 && \
+    echo "${BUILDX_SHA} ${BUILDX_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
+    chmod a+x buildx-v${BUILDX_VERSION}.linux-amd64 && \
+    mkdir -p ~/.docker/cli-plugins && \
+    mv buildx-v${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+
 ENTRYPOINT ["bash", "/entrypoint.sh"]
 
 # CMD ["goreleaser", "-v"]
