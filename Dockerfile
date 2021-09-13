@@ -19,8 +19,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=0.177.0
-ARG GORELEASER_SHA=8dd5fff1d04eff3789d200920bf280391f96fd5cc1565dd0d6e0db2b9a710854
+ARG GORELEASER_VERSION=0.179.0
+ARG GORELEASER_SHA=43e077d1cddeb1c82882d10fdac878682268df887fb1c24971313fc11155fe3a
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
@@ -64,6 +64,16 @@ RUN \
     chmod a+x buildx-v${BUILDX_VERSION}.linux-amd64 && \
     mkdir -p ~/.docker/cli-plugins && \
     mv buildx-v${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+
+# install Pack CLI 
+ARG PACK_VERSION=0.21.0-rc1
+ARG PACK_SHA=2a70e946f7a86d96e72292fc1a2209972d0fa7901d758a1a3fc3d4d272e78efe
+RUN \
+    PACK_DOWNLOAD_FILE=pack-v${PACK_VERSION}-linux.tgz && \
+    wget https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz && \
+    echo "${PACK_SHA} ${PACK_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
+    tar xzvf ${PACK_DOWNLOAD_FILE} -C /usr/local/bin pack --no-same-owner  && \
+	rm $PACK_DOWNLOAD_FILE
 
 ENTRYPOINT ["bash", "/entrypoint.sh"]
 
