@@ -5,8 +5,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 
 COPY entrypoint.sh /
 
-ARG GO_VERSION=1.17
-ARG GOLANG_DIST_SHA=6bf89fc4f5ad763871cf7eac80a2d594492de7a818303283f1366a7f6a30372d
+ARG GO_VERSION=1.17.1
+ARG GOLANG_DIST_SHA=dab7d9c34361dc21ec237d584590d72500652e7c909bf082758fb63064fca0ef
 
 # update golang
 RUN \
