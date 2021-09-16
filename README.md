@@ -12,22 +12,22 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
     ```
   - golang-cross-builder
     ```
-    docker pull ghcr.io/gythialy/golang-cross-builder:v1.16.2
+    docker pull ghcr.io/gythialy/golang-cross-builder:v1.17.1
     ```
 
 - Build your own images
   - Build base image (optional)
     ```
-     docker build -f Dockerfile_builder -t ghcr.io/gythialy/golang-cross-builder:v1.16.2 .
+     docker build -f Dockerfile_builder -t ghcr.io/gythialy/golang-cross-builder:v1.17.1 .
     ```
     > Please follow the guide to [pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first
   - Build golang-cross image
     ```
-    docker build --build-arg GO_VERSION=1.16.2 \ 
-      --build-arg GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8 \ 
-      --build-arg GORELEASER_VERSION=0.162.0 \ 
-      --build-arg GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e \ 
-      -f Dockerfile \ 
+    docker build --build-arg GO_VERSION=1.16.2 \
+      --build-arg GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8 \
+      --build-arg GORELEASER_VERSION=0.162.0 \
+      --build-arg GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e \
+      -f Dockerfile \
       -t ghcr.io/gythialy/golang-cross:latest .
     ```
     > The default arguments can be overridden with `--build-arg`
@@ -44,6 +44,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
 - Run docker container to build the binaries
 
   ```bash
+    export GO_BUILDER_VERSION=v1.17.1
     docker run --rm --privileged \
       -e PRIVATE_KEY=$(PRIVATE_KEY) \
       -v $(CURDIR):/golang-cross-example \
