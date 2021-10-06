@@ -6,11 +6,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      GOLANG_CROSS_TAG: "v1.17.1-1"
+
     steps:
     - uses: actions/checkout@v2
+    - uses: sigstore/cosign-installer@v1.2.0
+
     - name: Get Repo Owner
       id: get_repo_owner
       run: echo ::set-output name=repo_owner::$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
+
     - name: Build and Publish the Docker image to GitHub Packages
       uses: elgohr/Publish-Docker-Github-Action@3.04
       with:
@@ -19,7 +26,7 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
         dockerfile: Dockerfile.builder
         registry: docker.pkg.github.com
-        tags: "latest,v1.17.1"
+        tags: "latest,${{ env.GOLANG_CROSS_TAG }}"
 
     - name: Build and Publish the Docker image to ghcr.io
       uses: elgohr/Publish-Docker-Github-Action@3.04
@@ -29,4 +36,18 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
         dockerfile: Dockerfile.builder
         registry: ghcr.io
-        tags: "latest,v1.17.1"
+        tags: "latest,${{ env.GOLANG_CROSS_TAG }}"
+
+    - name: Sign the images
+      run: |
+          echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
+          cosign sign -key=cosign.key ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
+          docker logout
+
+          echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin docker.pkg.github.com
+          cosign sign -key=cosign.key docker.pkg.github.com/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/golang-cross-builder/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
+          docker logout
+      shell: bash
+      env:
+        COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
+        DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
