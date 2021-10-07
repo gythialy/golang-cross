@@ -45,7 +45,7 @@ jobs:
           docker logout
 
           echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin docker.pkg.github.com
-          cosign sign -key=cosign.key docker.pkg.github.com/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/golang-cross-builder/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
+          cosign sign -key=cosign.key docker.pkg.github.com/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
           docker logout
       shell: bash
       env:
