@@ -20,6 +20,7 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
         registry: docker.pkg.github.com
         tag_names: true
+        no_push: ${{ github.event_name == 'pull_request' }}
 
     - name: Build and Publish the Docker image to ghcr.io
       uses: elgohr/Publish-Docker-Github-Action@3.04
@@ -29,6 +30,7 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
         registry: ghcr.io
         tag_names: true
+        no_push: ${{ github.event_name == 'pull_request' }}
 
     - name: test example
       run: cd example && make snapshot
