@@ -34,3 +34,14 @@ jobs:
 
     - name: test example
       run: cd example && make snapshot
+
+    - name: Sign the images
+      run: |
+          echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
+          cosign sign -key=cosign.key ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:${{ env.GOLANG_CROSS_TAG }}
+          docker logout
+      shell: bash
+      if: ${{ startsWith('refs/tags/v', github.ref) }}
+      env:
+        COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
+        DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
