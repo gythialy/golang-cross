@@ -5,8 +5,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 
 COPY entrypoint.sh /
 
-ARG GO_VERSION=1.17.1
-ARG GOLANG_DIST_SHA=dab7d9c34361dc21ec237d584590d72500652e7c909bf082758fb63064fca0ef
+ARG GO_VERSION=1.17.2
+ARG GOLANG_DIST_SHA=f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676
 
 # update golang
 RUN \
@@ -65,7 +65,7 @@ RUN \
     mkdir -p ~/.docker/cli-plugins && \
     mv buildx-v${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
-# install Pack CLI 
+# install Pack CLI
 ARG PACK_VERSION=0.21.0-rc1
 ARG PACK_SHA=2a70e946f7a86d96e72292fc1a2209972d0fa7901d758a1a3fc3d4d272e78efe
 RUN \
