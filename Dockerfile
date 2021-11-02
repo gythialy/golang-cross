@@ -30,6 +30,9 @@ RUN  \
 	rm $GORELEASER_DOWNLOAD_FILE && \
 	goreleaser -v
 
+# install cosign
+COPY --from=gcr.io/projectsigstore/cosign:1.3.0@sha256:65de2f3f2844815ed20ab939319e3dad4238a9aaaf4893b22ec5702e9bc33755 /bin/cosign /usr/local/bin/cosign
+
 # install git-chglog
 ARG GIT_CHGLOG_VERSION=0.14.2
 ARG GIT_CHGLOG_SHA=90a940f47ae6fedce5b5995f22dcae6159e54b86418e08a9a911705d36dbd52e
