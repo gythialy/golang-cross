@@ -8,6 +8,9 @@ COPY entrypoint.sh /
 ARG GO_VERSION=1.17.3
 ARG GOLANG_DIST_SHA=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c
 
+# install cosign
+COPY --from=gcr.io/projectsigstore/cosign:1.3.0@sha256:65de2f3f2844815ed20ab939319e3dad4238a9aaaf4893b22ec5702e9bc33755 /bin/cosign /usr/local/bin/cosign
+
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
@@ -24,14 +27,14 @@ ARG GORELEASER_SHA=0972c17d94f2a95aafbef0c9f6d01ea774abfb8d37b85778e8cb4885efc24
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
+	cosign verify-blob -key https://raw.githubusercontent.com/goreleaser/goreleaser/master/cosign.pub \
+	-signature https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.sig \
+	https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt && \
 	wget ${GORELEASER_DOWNLOAD_URL} && \
 	echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
 	tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser && \
 	rm $GORELEASER_DOWNLOAD_FILE && \
 	goreleaser -v
-
-# install cosign
-COPY --from=gcr.io/projectsigstore/cosign:1.3.0@sha256:65de2f3f2844815ed20ab939319e3dad4238a9aaaf4893b22ec5702e9bc33755 /bin/cosign /usr/local/bin/cosign
 
 # install git-chglog
 ARG GIT_CHGLOG_VERSION=0.14.2
