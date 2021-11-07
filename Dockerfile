@@ -36,6 +36,18 @@ RUN  \
 	rm $GORELEASER_DOWNLOAD_FILE && \
 	goreleaser -v
 
+# install ko
+ARG KO_VERSION=0.9.3
+ARG KO_SHA=0b1fa3ec34f095675d1b214e6bfde1e5b73a199378e830830ec81fec3484645e
+RUN  \
+	KO_DOWNLOAD_FILE=ko_${KO_VERSION}_Linux_x86_64.tar.gz && \
+	KO_DOWNLOAD_URL=https://github.com/google/ko/releases/download/v${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
+	wget ${KO_DOWNLOAD_URL} && \
+	echo "$KO_SHA $KO_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+	tar -xzf $KO_DOWNLOAD_FILE -C /usr/bin/ ko && \
+	rm $KO_DOWNLOAD_FILE && \
+	ko version
+
 # install git-chglog
 ARG GIT_CHGLOG_VERSION=0.14.2
 ARG GIT_CHGLOG_SHA=90a940f47ae6fedce5b5995f22dcae6159e54b86418e08a9a911705d36dbd52e
