@@ -92,6 +92,21 @@ RUN \
     tar xzvf ${PACK_DOWNLOAD_FILE} -C /usr/local/bin pack --no-same-owner  && \
 	rm $PACK_DOWNLOAD_FILE
 
+
+# install gcloud sdk
+ENV PATH=/google-cloud-sdk/bin:${PATH} \
+	CLOUDSDK_CORE_DISABLE_PROMPTS=1
+
+RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz && \
+	tar xzf google-cloud-sdk.tar.gz -C / && \
+	rm google-cloud-sdk.tar.gz && \
+	/google-cloud-sdk/install.sh \
+	--disable-installation-options \
+	--bash-completion=false \
+	--path-update=false \
+	--usage-reporting=false && \
+	gcloud info > /root/gcloud-info.txt
+
 ENTRYPOINT ["bash", "/entrypoint.sh"]
 
 # CMD ["goreleaser", "-v"]
