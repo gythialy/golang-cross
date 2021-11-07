@@ -1,16 +1,15 @@
-FROM ghcr.io/gythialy/golang-cross-builder:v1.17.2-0
+FROM ghcr.io/gythialy/golang-cross-builder:v1.17.3-0
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 
 COPY entrypoint.sh /
 
-ARG GO_VERSION=1.17.3
-ARG GOLANG_DIST_SHA=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c
-
 # install cosign
 COPY --from=gcr.io/projectsigstore/cosign:1.3.0@sha256:65de2f3f2844815ed20ab939319e3dad4238a9aaaf4893b22ec5702e9bc33755 /bin/cosign /usr/local/bin/cosign
 
+ARG GO_VERSION=1.17.3
+ARG GOLANG_DIST_SHA=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
