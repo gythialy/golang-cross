@@ -1,5 +1,5 @@
 # Tested for arm64 osx (sdk ver below) amd64 
-ARG GO_VERSION=1.15.15
+ARG GO_VERSION=1.16.10
 
 # OS-X SDK parameters
 ARG OSX_SDK=MacOSX10.15.sdk
@@ -7,9 +7,9 @@ ARG OSX_SDK_SUM=aee7b132a4b10cc26ab9904706412fd0907f5b8b660251e465647d8763f9f009
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
-ARG OSX_CROSS_COMMIT=2733413b6847c1489d6230f062d3293e6f42a021
+ARG OSX_CROSS_COMMIT=c2ad5e859d12
 
-FROM golang:${GO_VERSION}-buster AS base
+FROM golang:${GO_VERSION} AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
