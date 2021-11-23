@@ -72,8 +72,8 @@ RUN  \
     docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=0.6.3
-ARG BUILDX_SHA=8dbc69a27afbc668e5d9fcda0e6d8334c1716e0ea6bd4d22ba3a32a53c3c834b
+ARG BUILDX_VERSION=0.7.0
+ARG BUILDX_SHA=52f38cd1508d2002525ba81f86adc9c34515e7c03c5e08f7e179d560cd1ad344
 RUN \
     BUILDX_DOWNLOAD_FILE=buildx-v${BUILDX_VERSION}.linux-amd64 && \
     wget https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 && \
