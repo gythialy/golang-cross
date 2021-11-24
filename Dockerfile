@@ -86,14 +86,8 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
 	echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
 	apt-get update && apt-get install -y docker-ce-cli
 
-ARG GORELEASER_VERSION=0.176.0
-ARG GORELEASER_SHA=13bf8ef4ec33d4f3ff2d2c7c02361946e29d69093cf7102e46dcb49e48a31435
-RUN GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
-	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
-	wget ${GORELEASER_DOWNLOAD_URL}; \
-			echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1; \
-			tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser; \
-			rm $GORELEASER_DOWNLOAD_FILE;
+# Used only when building locally, else the latest goreleaser is installed by GHA
+RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/latest/download/goreleaser_Linux_x86_64.tar.gz  | tar -xzf -C /usr/bin/ goreleaser
 
 COPY unlock-agent.sh /
 COPY daemon.json /etc/docker/daemon.json
