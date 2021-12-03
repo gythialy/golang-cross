@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-COPY --from=gcr.io/projectsigstore/cosign:1.3.0@sha256:65de2f3f2844815ed20ab939319e3dad4238a9aaaf4893b22ec5702e9bc33755 /bin/cosign /usr/local/bin/cosign
+COPY --from=gcr.io/projectsigstore/cosign:1.3.1@sha256:3cd9b3a866579dc2e0cf2fdea547f4c9a27139276cc373165c26842bc594b8bd /ko-app/cosign /usr/local/bin/cosign
 
 ARG GO_VERSION=1.17.3
 ARG GOLANG_DIST_SHA=550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c
@@ -21,8 +21,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.0.0
-ARG GORELEASER_SHA=304fc638ef7b4138a0d680e25ab6019636a42f79c4b0e2e93abd7c42d1629967
+ARG GORELEASER_VERSION=1.1.0
+ARG GORELEASER_SHA=10a6356fc1762458b4e4bbb388d0daab182f2eca2c314b8790b8017ca1e284d1
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
