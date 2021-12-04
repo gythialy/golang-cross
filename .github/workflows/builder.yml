@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GOLANG_CROSS_TAG: "v1.17.3-0"
+      GOLANG_CROSS_TAG: "v1.17.4-0"
 
     steps:
     - uses: actions/checkout@v2
