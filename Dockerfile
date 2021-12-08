@@ -84,7 +84,7 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
 	apt-get update && apt-get install -y docker-ce-cli
 
 # Used only when building locally, else the latest goreleaser is installed by GHA
-RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/latest/download/goreleaser_Linux_x86_64.tar.gz  | tar -xzf -C /usr/bin/ goreleaser
+RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/latest/download/goreleaser_Linux_x86_64.tar.gz  | tar -C /usr/bin/ -xzf - goreleaser
 
 COPY unlock-agent.sh /
 COPY daemon.json /etc/docker/daemon.json
