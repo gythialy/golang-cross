@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gover: [ 1.16.10, 1.12 ]
+        gover: [ 1.16, 1.15.15 ]
 
     runs-on: ubuntu-latest
  
