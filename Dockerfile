@@ -8,8 +8,8 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=gcr.io/projectsigstore/cosign:1.3.1@sha256:3cd9b3a866579dc2e0cf2fdea547f4c9a27139276cc373165c26842bc594b8bd /ko-app/cosign /usr/local/bin/cosign
 
-ARG GO_VERSION=1.17.4
-ARG GOLANG_DIST_SHA=adab2483f644e2f8a10ae93122f0018cef525ca48d0b8764dae87cb5f4fd4206
+ARG GO_VERSION=1.17.5
+ARG GOLANG_DIST_SHA=bd78114b0d441b029c8fe0341f4910370925a4d270a6a590668840675b0c653e
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
