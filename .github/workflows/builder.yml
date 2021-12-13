@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: sigstore/cosign-installer@v1.3.1
+    - uses: sigstore/cosign-installer@v1.4.1
 
     - name: Get Repo Owner
       id: get_repo_owner
