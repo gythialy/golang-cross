@@ -26,8 +26,8 @@ ARG GORELEASER_SHA=10a6356fc1762458b4e4bbb388d0daab182f2eca2c314b8790b8017ca1e28
 RUN  \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
-	cosign verify-blob --key https://raw.githubusercontent.com/goreleaser/goreleaser/master/cosign.pub \
-	-signature https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.sig \
+	cosign verify-blob --key https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/cosign.pub \
+	--signature https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.sig \
 	https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt && \
 	wget ${GORELEASER_DOWNLOAD_URL} && \
 	echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
