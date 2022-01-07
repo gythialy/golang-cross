@@ -26,6 +26,7 @@ RUN set -x; echo "Starting image build for Debian Stretch" \
  && dpkg --add-architecture mipsel                     \
  && dpkg --add-architecture powerpc                    \
  && dpkg --add-architecture ppc64el                    \
+ && dpkg --add-architecture s390x                      \
  && apt-get update                                     \
  && apt-get install -y -q                              \
         autoconf                                       \
