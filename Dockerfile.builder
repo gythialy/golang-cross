@@ -43,6 +43,7 @@ RUN set -x; echo "Starting image build for Debian Stretch" \
         crossbuild-essential-armhf                     \
         crossbuild-essential-mipsel                    \
         crossbuild-essential-ppc64el                   \
+        crossbuild-essential-s390x                     \
         curl                                           \
         devscripts                                     \
         gdb                                            \
