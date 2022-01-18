@@ -7,8 +7,11 @@ on:
 
 jobs:
   build:
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - uses: sigstore/cosign-installer@v1.4.1
@@ -42,11 +45,11 @@ jobs:
     - name: Sign the images
       run: |
           echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
-          cosign sign --force --key=cosign.key ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:${{ steps.get_tag.outputs.release_tag }}
+          cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:${{ steps.get_tag.outputs.release_tag }}
           docker logout
 
           echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin docker.pkg.github.com
-          cosign sign --force --key=cosign.key ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/xcgo:${{ steps.get_tag.outputs.release_tag }}
+          cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/xcgo:${{ steps.get_tag.outputs.release_tag }}
           docker logout
       shell: bash
       env:
