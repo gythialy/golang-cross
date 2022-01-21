@@ -39,6 +39,7 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
 	unzip                                          \
 	sudo                                           \
 	jq                                             \
+        ruby-dev                                       \
 && apt -y autoremove                                   \
 && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -50,12 +51,12 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
 # Used only when building locally, else the latest goreleaser is installed by GHA
 RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/latest/download/goreleaser_Linux_x86_64.tar.gz  | tar -C /usr/bin/ -xzf - goreleaser
 
-# Upload to packagecloud.io
-RUN go get github.com/atotto/packagecloud
-
 # Seems like there's an issue with buildx while running docker cli from within the container - the
 # experimental features are not enabled for the  CLI - to mitigate that.
 ENV DOCKER_CLI_EXPERIMENTAL=enabled
 
-COPY unlock-agent.sh /
+# Upload to packagecloud.io
+RUN gem install rake package_cloud
+
+COPY unlock-agent.sh pc.sh /
 COPY daemon.json /etc/docker/daemon.json
