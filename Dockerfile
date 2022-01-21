@@ -1,13 +1,13 @@
-# Tested for arm64 osx (sdk ver below) amd64
-ARG GO_VERSION=1.15.15
+# Committs to master will trigger a push to Dockerhub
 
+ARG GO_VERSION=1.15.15
 ARG DEB_VERSION=stretch
 
 FROM golang:${GO_VERSION}-${DEB_VERSION} AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
-RUN set -x; echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
+RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
  && dpkg --add-architecture arm64                      \
  && apt-get update                                     \
  && apt-get dist-upgrade -y -q                         \
