@@ -30,6 +30,7 @@ case $pkg in
 esac
 
 for i in $vers; do
-    # Ignore errors so that it doesn't break the build
-    package_cloud push $REPO/$i $pkg || true
+    # Yank packages first to enable tag re-use
+    package_cloud yank $REPO/$i $pkg || true
+    package_cloud push $REPO/$i $pkg
 done
