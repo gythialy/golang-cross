@@ -5,6 +5,7 @@ ARG DEB_VERSION=stretch
 
 FROM golang:${GO_VERSION}-${DEB_VERSION} AS base
 
+ARG DEB_VERSION
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
@@ -20,9 +21,9 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
         binutils-multiarch-dev                         \
         build-essential                                \
         clang                                          \
+        git-core                                       \
         crossbuild-essential-arm64                     \
         curl                                           \
-        git-core                                       \
         libtool                                        \
         multistrap                                     \
         patch                                          \
@@ -39,14 +40,16 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
 	unzip                                          \
 	sudo                                           \
 	jq                                             \
-        ruby-dev                                       \
-&& apt -y autoremove                                   \
-&& apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        ruby-dev
 
 # install docker cli
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
-	echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
-	apt-get update && apt-get install -y docker-ce-cli
+    echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && apt-get install -y docker-ce-cli
+
+COPY upgrade-git-on-stretch.sh /
+RUN /upgrade-git-on-stretch.sh ${DEB_VERSION}
+RUN apt-get -y autoremove && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Used only when building locally, else the latest goreleaser is installed by GHA
 RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/latest/download/goreleaser_Linux_x86_64.tar.gz  | tar -C /usr/bin/ -xzf - goreleaser
