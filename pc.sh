@@ -19,6 +19,9 @@ fi
 pkg=$1
 
 case $pkg in
+    *PAYG*)
+	echo Not uploading PAYG version $pkg
+	;;
     *deb)
 	vers="$DEBVERS"
 	;;
@@ -26,7 +29,7 @@ case $pkg in
 	vers="$RPMVERS"
 	;;
     *)
-	echo Not uploading $pkg
+	echo "Unknown package, not uploading"
 esac
 
 for i in $vers; do
