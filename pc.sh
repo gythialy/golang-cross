@@ -34,6 +34,6 @@ esac
 
 for i in $vers; do
     # Yank packages first to enable tag re-use
-    package_cloud yank $REPO/$i $pkg || true
+    package_cloud yank $REPO/$i $(basename $pkg) || true
     package_cloud push $REPO/$i $pkg
 done
