@@ -111,6 +111,9 @@ RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.ta
 	--usage-reporting=false && \
 	gcloud info > /root/gcloud-info.txt
 
+# install goimports
+RUN go install golang.org/x/tools/cmd/goimports@latest
+
 ENTRYPOINT ["bash", "/entrypoint.sh"]
 
 # CMD ["goreleaser", "-v"]
