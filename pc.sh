@@ -27,6 +27,9 @@ case $pkg in
 	;;
     *rpm)
 	vers="$RPMVERS"
+	rpm --define "%_gpg_name Team Tyk (package signing) <team@tyk.io>" \
+            --define "%__gpg /usr/bin/gpg" \
+            --addsign $pkg
 	;;
     *)
 	echo "Unknown package, not uploading"

@@ -40,6 +40,7 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
 	unzip                                          \
 	sudo                                           \
 	jq                                             \
+	rpm                                            \
         ruby-dev
 
 # install docker cli
