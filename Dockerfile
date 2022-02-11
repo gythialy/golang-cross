@@ -10,8 +10,8 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.5.1@sha256:6247b2e693b0e6a62dcfa75e
 # install syft
 COPY --from=docker.io/anchore/syft:v0.36.0@sha256:305e1777f6e105bfd4cc9a06faceefabb0a5c6c59d854013b4068c7ee7b310ba /syft /usr/local/bin/syft
 
-ARG GO_VERSION=1.17.6
-ARG GOLANG_DIST_SHA=231654bbf2dab3d86c1619ce799e77b03d96f9b50770297c8f4dff8836fc8ca2
+ARG GO_VERSION=1.17.7
+ARG GOLANG_DIST_SHA=02b111284bedbfa35a7e5b74a06082d18632eff824fd144312f6063943d49259
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
@@ -115,5 +115,3 @@ RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.ta
 RUN go install golang.org/x/tools/cmd/goimports@latest
 
 ENTRYPOINT ["bash", "/entrypoint.sh"]
-
-# CMD ["goreleaser", "-v"]
