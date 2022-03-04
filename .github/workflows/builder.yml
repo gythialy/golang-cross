@@ -11,7 +11,7 @@ jobs:
       packages: write
       contents: read
     env:
-      GOLANG_CROSS_TAG: "v1.17.7-0"
+      GOLANG_CROSS_TAG: "v1.17.8-0"
 
     steps:
     - uses: actions/checkout@v2
