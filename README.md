@@ -18,7 +18,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
 - Build your own images
   - Build base image (optional)
     ```
-     docker build -f Dockerfile_builder -t ghcr.io/gythialy/golang-cross-builder:v1.17.1 .
+     docker build -f Dockerfile.builder -t ghcr.io/gythialy/golang-cross-builder:v1.17.1 .
     ```
     > Please follow the guide to [pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first
   - Build golang-cross image

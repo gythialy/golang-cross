@@ -1,4 +1,4 @@
-FROM ghcr.io/gythialy/golang-cross-builder:v1.17.8-0
+FROM ghcr.io/gythialy/golang-cross-builder:v1.18-0
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
@@ -10,8 +10,8 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.6.0@sha256:b667002156c4bf9fedd9273f
 # install syft
 COPY --from=docker.io/anchore/syft:v0.41.1@sha256:ea739e99eaeef4cd51690074d08f2c3c7b166a080f0ef889d1294ebc326fcba0 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=1.17.8
-ARG GOLANG_DIST_SHA=980e65a863377e69fd9b67df9d8395fd8e93858e7a24c9f55803421e453f4f99
+ARG GO_VERSION=1.18
+ARG GOLANG_DIST_SHA=e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
