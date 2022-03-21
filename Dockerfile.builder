@@ -5,19 +5,19 @@ ARG GO_VERSION=1.17.8
 ARG OSX_VERSION_MIN=10.12
 ARG OSX_CROSS_COMMIT=0c6186e32d170abcccc0ca39bd14f6b91ac32289
 
-FROM golang:${GO_VERSION}-buster AS base
+FROM golang:${GO_VERSION}-bullseye AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
  && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
 ENV OSX_CROSS_PATH=/osxcross
 
-FROM docker.pkg.github.com/gythialy/golang-cross/osx-sdk:macos-11.1 AS osx-sdk
+FROM ghcr.io/gythialy/golang-cross/osx-sdk:macos-11.1 AS osx-sdk
 
 FROM base AS osx-cross-base
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
-RUN set -x; echo "Starting image build for Debian Stretch" \
+RUN set -x; echo "Starting image build for Debian    " \
  && dpkg --add-architecture arm64                      \
  && dpkg --add-architecture armel                      \
  && dpkg --add-architecture armhf                      \
