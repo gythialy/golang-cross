@@ -27,14 +27,14 @@ jobs:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
         password: ${{ secrets.DEPLOY_TOKEN }}
-        registry: ${{ env.DOCKER_REGISTRY }}
+        registry: ghcr.io
         dockerfile: Dockerfile.builder
         tags: "latest,${{ env.GOLANG_CROSS_TAG }}"
 
     # - name: Sign the images
     #   run: |
-    #     echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ${{ secrets.DOCKER_REGISTRY }}
-    #     cosign sign --force ${{ secrets.DOCKER_REGISTRY }}/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
+    #     echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
+    #     cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
     #     docker logout
 
     #   shell: bash

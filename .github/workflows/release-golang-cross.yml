@@ -23,22 +23,13 @@ jobs:
       id: get_tag
       run: echo ::set-output name=release_tag::${GITHUB_REF/refs\/tags\//}
 
-    - name: Build and Publish the Docker image to GitHub Packages
-      uses: elgohr/Publish-Docker-Github-Action@3.04
-      with:
-        name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/xcgo
-        username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.DEPLOY_TOKEN }}
-        registry: docker.pkg.github.com
-        tags: ${{ steps.get_tag.outputs.release_tag }}
-
     - name: Build and Publish the Docker image to ghcr.io
       uses: elgohr/Publish-Docker-Github-Action@3.04
       with:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
         password: ${{ secrets.DEPLOY_TOKEN }}
-        registry: ${{ secrets.DOCKER_REGISTRY }}
+        registry: ghcr.io
         tags: ${{ steps.get_tag.outputs.release_tag }}
 
     # - name: Sign the images
