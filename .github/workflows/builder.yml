@@ -41,5 +41,4 @@ jobs:
       shell: bash
       env:
         COSIGN_EXPERIMENTAL: 1
-        COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
         DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
