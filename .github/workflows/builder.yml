@@ -11,7 +11,7 @@ jobs:
       packages: write
       contents: read
     env:
-      GOLANG_CROSS_TAG: "v1.17.8-1"
+      GOLANG_CROSS_TAG: "v1.18.0-0"
       DOCKER_REGISTRY: "ghcr.io"
 
     steps:
