@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -ex
 # goreleaser calls a custom publisher for each artefact
 # packagecloud expects the distro version when pushing
 # this script bridges both by choosing the appropriate list of distro versions from $DEBVERS and $RPMVERS
