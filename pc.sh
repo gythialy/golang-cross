@@ -32,9 +32,15 @@ case $pkg in
 	echo "Unknown package, not uploading"
 esac
 
+# check what's on the curr dir
+ls
+
 for i in $vers; do
+
+    [[ ! -s ${pkg} ]] && echo "File is empty or does not exists" && exit 1
+
     # Yank packages first to enable tag re-use
     package_cloud yank $REPO/$i $(basename $pkg) || true
-    var=$(package_cloud push $REPO/$i $pkg 2>&1 || true)
-    echo "$var"
+    package_cloud push $REPO/$i $pkg 2>&1 > out.log || true
+    cat out.log
 done
