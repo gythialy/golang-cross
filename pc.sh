@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+
 # goreleaser calls a custom publisher for each artefact
 # packagecloud expects the distro version when pushing
 # this script bridges both by choosing the appropriate list of distro versions from $DEBVERS and $RPMVERS
@@ -32,8 +32,6 @@ case $pkg in
 	echo "Unknown package, not uploading"
 esac
 
-# check what's on the curr dir
-ls
 
 for i in $vers; do
 
@@ -41,6 +39,6 @@ for i in $vers; do
 
     # Yank packages first to enable tag re-use
     package_cloud yank $REPO/$i $(basename $pkg) || true
-    package_cloud push $REPO/$i $pkg 2>&1 > out.log || true
-    cat out.log
+    package_cloud push $REPO/$i $pkg
+
 done
