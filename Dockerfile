@@ -8,7 +8,7 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=gcr.io/projectsigstore/cosign:v1.6.0@sha256:b667002156c4bf9fedd9273f689b800bb5c341660e710e3bbac981c9795423d9 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.40.0@sha256:c57df88f56ec9d86ad51b14475b017666705418856db1d87230fed8de2a1e109 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.43.0@sha256:91ba44e1f5704cbb3c7c2917f458acfbb8971c014f5c2ee102f3f3314a5bcee5 /syft /usr/local/bin/syft
 
 ARG GO_VERSION=1.17.8
 ARG GOLANG_DIST_SHA=980e65a863377e69fd9b67df9d8395fd8e93858e7a24c9f55803421e453f4f99
@@ -24,7 +24,7 @@ RUN \
 
 # install goreleaser
 ARG GORELEASER_VERSION=1.7.0
-ARG GORELEASER_SHA=41b3c5c26a53c2141fdc197053286a1b0797de793d37af8b82b207c5b2eca69d
+ARG GORELEASER_SHA=e74934e7571991522324642ac7b032310f04baf192ce2a54db1dc323b97bcd7d
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
@@ -105,7 +105,7 @@ RUN \
 	wget https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/${KUSTOMIZE_DOWNLOAD_FILE} && \
 	echo "${KUSTOMIZE_SHA} ${KUSTOMIZE_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
 	tar xzvf ${KUSTOMIZE_DOWNLOAD_FILE} -C /usr/local/bin kustomize && \
-	rm $KUSTOMIZE_DOWNLOAD_FILE \
+	rm $KUSTOMIZE_DOWNLOAD_FILE && \
 	kustomize version
 
 # install gcloud sdk
