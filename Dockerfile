@@ -8,7 +8,7 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=gcr.io/projectsigstore/cosign:v1.6.0@sha256:b667002156c4bf9fedd9273f689b800bb5c341660e710e3bbac981c9795423d9 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.40.0@sha256:c57df88f56ec9d86ad51b14475b017666705418856db1d87230fed8de2a1e109 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.43.0@sha256:91ba44e1f5704cbb3c7c2917f458acfbb8971c014f5c2ee102f3f3314a5bcee5 /syft /usr/local/bin/syft
 
 ARG GO_VERSION=1.17.8
 ARG GOLANG_DIST_SHA=980e65a863377e69fd9b67df9d8395fd8e93858e7a24c9f55803421e453f4f99
@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.5.0
-ARG GORELEASER_SHA=a7bd4f76a495ed91f087dbf86fdbfa5f1bb594e86c1ec953e6b2dd46f596563b
+ARG GORELEASER_VERSION=1.7.0
+ARG GORELEASER_SHA=e74934e7571991522324642ac7b032310f04baf192ce2a54db1dc323b97bcd7d
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
@@ -40,8 +40,8 @@ RUN  \
 	goreleaser -v
 
 # install ko
-ARG KO_VERSION=0.10.0
-ARG KO_SHA=4cd190d1bbc39e8f26d5973b33aa8dae92d8b59c9509584fd92a1a371b22c7c3
+ARG KO_VERSION=0.11.2
+ARG KO_SHA=afb5dacb44bfeafdc53c6de03d9ff74f4a6003c5617381d3139038aa25f3fb66
 RUN  \
 	KO_DOWNLOAD_FILE=ko_${KO_VERSION}_Linux_x86_64.tar.gz && \
 	KO_DOWNLOAD_URL=https://github.com/google/ko/releases/download/v${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
@@ -96,6 +96,17 @@ RUN \
     tar xzvf ${PACK_DOWNLOAD_FILE} -C /usr/local/bin pack --no-same-owner  && \
 	rm $PACK_DOWNLOAD_FILE
 
+
+# install Kustomize
+ARG KUSTOMIZE_VERSION=4.5.4
+ARG KUSTOMIZE_SHA=1159c5c17c964257123b10e7d8864e9fe7f9a580d4124a388e746e4003added3
+RUN \
+	KUSTOMIZE_DOWNLOAD_FILE=kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz && \
+	wget https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/${KUSTOMIZE_DOWNLOAD_FILE} && \
+	echo "${KUSTOMIZE_SHA} ${KUSTOMIZE_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
+	tar xzvf ${KUSTOMIZE_DOWNLOAD_FILE} -C /usr/local/bin kustomize && \
+	rm $KUSTOMIZE_DOWNLOAD_FILE && \
+	kustomize version
 
 # install gcloud sdk
 ENV PATH=/google-cloud-sdk/bin:${PATH} \
