@@ -36,10 +36,11 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
         libxml2-dev                                    \
         lzma-dev                                       \
         openssl                                        \
-	libssl-dev                                     \
-	unzip                                          \
-	sudo                                           \
-	jq                                             \
+        libssl-dev                                     \
+        unzip                                          \
+        sudo                                           \
+        jq                                             \
+        rpm                                            \
         ruby-dev
 
 # install docker cli

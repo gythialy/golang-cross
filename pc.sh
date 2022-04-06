@@ -8,7 +8,7 @@
 REQUIRED_VARS="PACKAGECLOUD_TOKEN REPO"
 
 usage() {
-    echo <<EOF
+    cat <<EOF
 Usage: $0 pkg_file
 Required envs: ${REQUIRED_VARS[@]}
 EOF
@@ -41,11 +41,22 @@ case $pkg in
 	;;
     *rpm)
 	vers="$RPMVERS"
+    # initiate signing only if there's no sign already present. If goreleaser already did
+    # the signing - there's no need to sign here. The rpm command throws an error if
+    # it's already present. We're keeping this step here in case goreleaser/nfpm fails to
+    # sign again as before.
+    curl https://keyserver.tyk.io/tyk.io.rpm.signing.key.2020 -o tyk.pub.key && rpm --import tyk.pub.key
+    if ! rpm --checksig "$pkg"
+    then
+        echo "No sign present in rpm package, adding sign.."
+        rpm --define "%_gpg_name Team Tyk (package signing) <team@tyk.io>" \
+                --define "%__gpg /usr/bin/gpg" \
+                --addsign $pkg
+    fi
 	;;
     *)
 	echo "Unknown package, not uploading"
 esac
-
 
 for i in $vers; do
 
