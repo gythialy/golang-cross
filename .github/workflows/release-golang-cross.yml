@@ -25,7 +25,7 @@ jobs:
       run: echo ::set-output name=release_tag::${GITHUB_REF/refs\/tags\//}
 
     - name: Build and Publish the Docker image to ghcr.io
-      uses: elgohr/Publish-Docker-Github-Action@3.04
+      uses: elgohr/Publish-Docker-Github-Action@v4
       with:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
