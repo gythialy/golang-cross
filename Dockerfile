@@ -10,8 +10,8 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.7.2@sha256:ad2985a87622d5934a4bc06a
 # install syft
 COPY --from=docker.io/anchore/syft:v0.44.0@sha256:91ba44e1f5704cbb3c7c2917f458acfbb8971c014f5c2ee102f3f3314a5bcee5 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=1.17.8
-ARG GOLANG_DIST_SHA=980e65a863377e69fd9b67df9d8395fd8e93858e7a24c9f55803421e453f4f99
+ARG GO_VERSION=1.17.9
+ARG GOLANG_DIST_SHA=9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
