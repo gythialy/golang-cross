@@ -10,8 +10,8 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.8.0@sha256:12b4d428529654c95a7550a9
 # install syft
 COPY --from=docker.io/anchore/syft:v0.45.1@sha256:ca78c06aaee7ee3d62179d42ea061b428a8851c26eb52eb7e5c18af2df267053 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=1.17.10
-ARG GOLANG_DIST_SHA=87fc728c9c731e2f74e4a999ef53cf07302d7ed3504b0839027bd9c10edaa3fd
+ARG GO_VERSION=1.17.11
+ARG GOLANG_DIST_SHA=d69a4fe2694f795d8e525c72b497ededc209cb7185f4c3b62d7a98dd6227b3fe
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.8.3
-ARG GORELEASER_SHA=304fa012709d12800528b124c9dbeabdcf8918f5e77b3877916e705798ed7962
+ARG GORELEASER_VERSION=1.9.2
+ARG GORELEASER_SHA=6089679e325a4cfc1d1374710dca99cd6f1f5ae4f351ceffa460d599432963d7
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
@@ -76,8 +76,8 @@ RUN  \
     docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=0.7.1
-ARG BUILDX_SHA=22fcb78c66905bf6ddf198118aaa9838b0349a25347606264be17e4276d6d5fc
+ARG BUILDX_VERSION=0.8.2
+ARG BUILDX_SHA=c64de4f3c30f7a73ff9db637660c7aa0f00234368105b0a09fa8e24eebe910c3
 RUN \
     BUILDX_DOWNLOAD_FILE=buildx-v${BUILDX_VERSION}.linux-amd64 && \
     wget https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 && \
