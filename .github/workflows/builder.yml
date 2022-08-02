@@ -11,28 +11,18 @@ jobs:
       packages: write
       contents: read
     env:
-      GOLANG_CROSS_TAG: "v1.17.12-0"
+      GOLANG_CROSS_TAG: "v1.17.13-0"
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: sigstore/cosign-installer@v2.4.0
+    - uses: actions/checkout@v3
+    - uses: sigstore/cosign-installer@v2
 
     - name: Get Repo Owner
       id: get_repo_owner
       run: echo ::set-output name=repo_owner::$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
 
-    - name: Build and Publish the Docker image to GitHub Packages
-      uses: elgohr/Publish-Docker-Github-Action@3.04
-      with:
-        name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/golang-cross-builder
-        username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.DEPLOY_TOKEN }}
-        dockerfile: Dockerfile.builder
-        registry: docker.pkg.github.com
-        tags: "latest,${{ env.GOLANG_CROSS_TAG }}"
-
     - name: Build and Publish the Docker image to ghcr.io
-      uses: elgohr/Publish-Docker-Github-Action@3.04
+      uses: elgohr/Publish-Docker-Github-Action@v4
       with:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
@@ -43,15 +33,10 @@ jobs:
 
     - name: Sign the images
       run: |
-          echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
-          cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
-          docker logout
-
-          echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin docker.pkg.github.com
-          cosign sign --force docker.pkg.github.com/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
-          docker logout
+        echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
+        cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder:${{ env.GOLANG_CROSS_TAG }}
+        docker logout
       shell: bash
       env:
         COSIGN_EXPERIMENTAL: 1
-        COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
         DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
