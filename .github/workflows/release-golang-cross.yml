@@ -13,8 +13,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: sigstore/cosign-installer@v2.4.0
+    - uses: actions/checkout@v3
+    - uses: sigstore/cosign-installer@v2
 
     - name: Get Repo Owner
       id: get_repo_owner
@@ -24,17 +24,8 @@ jobs:
       id: get_tag
       run: echo ::set-output name=release_tag::${GITHUB_REF/refs\/tags\//}
 
-    - name: Build and Publish the Docker image to GitHub Packages
-      uses: elgohr/Publish-Docker-Github-Action@3.04
-      with:
-        name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/xcgo
-        username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.DEPLOY_TOKEN }}
-        registry: docker.pkg.github.com
-        tags: ${{ steps.get_tag.outputs.release_tag }}
-
     - name: Build and Publish the Docker image to ghcr.io
-      uses: elgohr/Publish-Docker-Github-Action@3.04
+      uses: elgohr/Publish-Docker-Github-Action@v4
       with:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
@@ -47,12 +38,7 @@ jobs:
           echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin ghcr.io
           cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:${{ steps.get_tag.outputs.release_tag }}
           docker logout
-
-          echo "${DOCKER_PASSWD}" | docker login -u ${{ steps.get_repo_owner.outputs.repo_owner }} --password-stdin docker.pkg.github.com
-          cosign sign --force ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross/xcgo:${{ steps.get_tag.outputs.release_tag }}
-          docker logout
       shell: bash
       env:
         COSIGN_EXPERIMENTAL: 1
-        COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
         DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
