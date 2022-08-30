@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - go-1.18
   pull_request:
     branches:
       - main
+      - go-1.18
 
 jobs:
 
