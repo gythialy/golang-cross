@@ -6,12 +6,12 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-COPY --from=gcr.io/projectsigstore/cosign:v1.10.0@sha256:9377edd13ae515dcb97c15052e577a2cbce098f36b0361bdb2348e3bdd8fe536 /ko-app/cosign /usr/local/bin/cosign
+COPY --from=gcr.io/projectsigstore/cosign:v1.11.1@sha256:f9fd5a287a67f4b955d08062a966df10f9a600b6b8583fd367bce3f1f000a429 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.52.0@sha256:3f8085b0bbd5768cecbbda359a6f4353c658082a820e394f9983ed764ec98109 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.55.0@sha256:42ede68d8a8762e42715692221a212cba262ce3a252ed962abf3d44ce3e68a52 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=1.18.5
-ARG GOLANG_DIST_SHA=9e5de37f9c49942c601b191ac5fba404b868bfc21d446d6960acc12283d6e5f2
+ARG GO_VERSION=1.19
+ARG GOLANG_DIST_SHA=464b6b66591f6cf055bc5df90a9750bf5fbc9d038722bb84a9d56a2bea974be6
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.10.3
-ARG GORELEASER_SHA=942c2ddc87b589fd73f5b612909c31298b1e8b8a7ee9b6a463dd5038030b1cc2
+ARG GORELEASER_VERSION=1.11.1
+ARG GORELEASER_SHA=43487483d14ea32a0dcc691509dbac4dc4038ab43a796ebe43a87f24aec52320
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
@@ -40,8 +40,8 @@ RUN  \
 	goreleaser -v
 
 # install ko
-ARG KO_VERSION=0.11.2
-ARG KO_SHA=afb5dacb44bfeafdc53c6de03d9ff74f4a6003c5617381d3139038aa25f3fb66
+ARG KO_VERSION=0.12.0
+ARG KO_SHA=05aa77182fa7c55386bd2a210fd41298542726f33bbfc9c549add3a66f7b90ad
 RUN  \
 	KO_DOWNLOAD_FILE=ko_${KO_VERSION}_Linux_x86_64.tar.gz && \
 	KO_DOWNLOAD_URL=https://github.com/google/ko/releases/download/v${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
