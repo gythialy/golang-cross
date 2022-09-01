@@ -13,13 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gover: [ 1.15 ]
+        gover: [ 1.15, 1.16 ]
         debver: [ buster, stretch ]
         include:
           - debver: stretch
-            tag: 1.15-el7
-          - debver: buster
-            tag: 1.15
+            tagSuffix: -el7
 
     runs-on: ubuntu-latest
  
@@ -34,12 +32,12 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
             
-    - name: Build and push go ${{ matrix.tag }} based image
+    - name: Build and push go ${{ format( '{0}{1}', matrix.gover, matrix.tagSuffix) }} based image
       id: docker_build
       uses: docker/build-push-action@v2
       with:
         push: ${{ github.ref_name == 'master' }}
-        tags: tykio/golang-cross:${{ matrix.tag }}
+        tags: tykio/golang-cross:${{ format( '{0}{1}', matrix.gover, matrix.tagSuffix) }}
         build-args: |
           GO_VERSION=${{ matrix.gover }}
           DEB_VERSION=${{ matrix.debver }}
