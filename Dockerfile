@@ -10,8 +10,8 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.11.1@sha256:f9fd5a287a67f4b955d0806
 # install syft
 COPY --from=docker.io/anchore/syft:v0.55.0@sha256:42ede68d8a8762e42715692221a212cba262ce3a252ed962abf3d44ce3e68a52 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=1.19
-ARG GOLANG_DIST_SHA=464b6b66591f6cf055bc5df90a9750bf5fbc9d038722bb84a9d56a2bea974be6
+ARG GO_VERSION=1.19.1
+ARG GOLANG_DIST_SHA=acc512fbab4f716a8f97a8b3fbaa9ddd39606a28be6c2515ef7c6c6311acffde
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.11.1
-ARG GORELEASER_SHA=43487483d14ea32a0dcc691509dbac4dc4038ab43a796ebe43a87f24aec52320
+ARG GORELEASER_VERSION=1.11.2
+ARG GORELEASER_SHA=f820ebb66a5ef1bbcf625019489eca37dae15ee17dc40d7c877396a510a63b7c
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
