@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.10.3
-ARG GORELEASER_SHA=942c2ddc87b589fd73f5b612909c31298b1e8b8a7ee9b6a463dd5038030b1cc2
+ARG GORELEASER_VERSION=1.11.4
+ARG GORELEASER_SHA=55c2a911b33f1da700d937e51696a8be376fe64afe6f6681fd194456a640c3d6
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
@@ -52,8 +52,8 @@ RUN  \
 	ko version
 
 # install git-chglog
-ARG GIT_CHGLOG_VERSION=0.14.2
-ARG GIT_CHGLOG_SHA=90a940f47ae6fedce5b5995f22dcae6159e54b86418e08a9a911705d36dbd52e
+ARG GIT_CHGLOG_VERSION=0.15.1
+ARG GIT_CHGLOG_SHA=5247e4602bac520e92fca317322fe716968a27aab1d91706f316627e3a3ee8e6
 RUN \
 	GIT_CHGLOG_DOWNLOAD_FILE=git-chglog_linux_amd64.tar.gz && \
 	GIT_CHGLOG_DOWNLOAD_URL=https://github.com/git-chglog/git-chglog/releases/download/v${GIT_CHGLOG_VERSION}/git-chglog_${GIT_CHGLOG_VERSION}_linux_amd64.tar.gz && \
@@ -76,8 +76,8 @@ RUN  \
     docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=0.8.2
-ARG BUILDX_SHA=c64de4f3c30f7a73ff9db637660c7aa0f00234368105b0a09fa8e24eebe910c3
+ARG BUILDX_VERSION=0.9.1
+ARG BUILDX_SHA=a7fb95177792ca8ffc7243fad7bf2f33738b8b999a184b6201f002a63c43d136
 RUN \
     BUILDX_DOWNLOAD_FILE=buildx-v${BUILDX_VERSION}.linux-amd64 && \
     wget https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 && \
@@ -87,8 +87,8 @@ RUN \
     mv buildx-v${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=0.21.0-rc1
-ARG PACK_SHA=2a70e946f7a86d96e72292fc1a2209972d0fa7901d758a1a3fc3d4d272e78efe
+ARG PACK_VERSION=0.27.0
+ARG PACK_SHA=83179a25818a8ae33eabc0599f1c7f21fb405b3697bb0ff350a63d88c7522b15
 RUN \
     PACK_DOWNLOAD_FILE=pack-v${PACK_VERSION}-linux.tgz && \
     wget https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz && \
