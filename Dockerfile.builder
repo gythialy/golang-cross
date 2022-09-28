@@ -3,7 +3,7 @@ ARG GO_VERSION=1.19.1
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
-ARG OSX_CROSS_COMMIT=0c6186e32d170abcccc0ca39bd14f6b91ac32289
+ARG OSX_CROSS_COMMIT=50e86ebca7d14372febd0af8cd098705049161b9
 
 FROM golang:${GO_VERSION}-bullseye AS base
 
@@ -12,7 +12,7 @@ RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/
  && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
 ENV OSX_CROSS_PATH=/osxcross
 
-FROM ghcr.io/gythialy/golang-cross/osx-sdk:macos-11.1 AS osx-sdk
+FROM ghcr.io/gythialy/golang-cross/osx-sdk:macos-12.3 AS osx-sdk
 
 FROM base AS osx-cross-base
 ARG DEBIAN_FRONTEND=noninteractive
