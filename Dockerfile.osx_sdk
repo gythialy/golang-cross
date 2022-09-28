@@ -1,8 +1,8 @@
-FROM debian:stretch-slim
+FROM debian:bullseye-slim
 
 # OS-X SDK parameters
-ARG OSX_SDK=MacOSX11.1.sdk
-ARG OSX_SDK_SUM=699da1b5df4665ada843ed7625a408226f82671ad193328dd30f52a46f5b38bc
+ARG OSX_SDK=MacOSX12.3.sdk
+ARG OSX_SDK_SUM=3aef2e5549867f563be5b03c51ca8f093a92059e58b4838d2e7ccca139782947
 
 ENV OSX_CROSS_PATH=/osxcross
 
