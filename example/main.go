@@ -10,7 +10,7 @@ import (
 
 // https://www.codeproject.com/Articles/5261771/Golang-SQLite-Simple-Example
 func main() {
-	os.Remove("sqlite-database.db") // I delete the file to avoid duplicated records.
+	_ = os.Remove("sqlite-database.db") // I delete the file to avoid duplicated records.
 	// SQLite is a file based database.
 
 	log.Println("Creating sqlite-database.db...")
@@ -18,12 +18,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	file.Close()
+	_ = file.Close()
 	log.Println("sqlite-database.db created")
 
 	sqliteDatabase, _ := sql.Open("sqlite3", "./sqlite-database.db") // Open the created SQLite File
-	defer sqliteDatabase.Close()                                     // Defer Closing the database
-	createTable(sqliteDatabase)                                      // Create Database Tables
+	defer func(sqliteDatabase *sql.DB) {
+		_ = sqliteDatabase.Close()
+	}(sqliteDatabase) // Defer Closing the database
+	createTable(sqliteDatabase) // Create Database Tables
 
 	// INSERT RECORDS
 	insertStudent(sqliteDatabase, "0001", "Liana Kim", "Bachelor")
@@ -53,7 +55,7 @@ func createTable(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	statement.Exec() // Execute SQL Statements
+	_, _ = statement.Exec() // Execute SQL Statements
 	log.Println("student table created")
 }
 
@@ -77,13 +79,15 @@ func displayStudents(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer row.Close()
+	defer func(row *sql.Rows) {
+		_ = row.Close()
+	}(row)
 	for row.Next() { // Iterate and fetch the records from result cursor
 		var id int
 		var code string
 		var name string
 		var program string
-		row.Scan(&id, &code, &name, &program)
+		_ = row.Scan(&id, &code, &name, &program)
 		log.Println("Student: ", code, " ", name, " ", program)
 	}
 }
