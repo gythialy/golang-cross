@@ -5,16 +5,14 @@ ARG GO_VERSION=1.19.1
 ARG OSX_VERSION_MIN=10.12
 ARG OSX_CROSS_COMMIT=50e86ebca7d14372febd0af8cd098705049161b9
 
-FROM golang:${GO_VERSION}-bullseye AS base
+FROM golang:${GO_VERSION:-1.19.1}-bullseye AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
  && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
+
 ENV OSX_CROSS_PATH=/osxcross
 
-FROM ghcr.io/gythialy/golang-cross/osx-sdk:macos-12.3 AS osx-sdk
-
-FROM base AS osx-cross-base
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN set -x; echo "Starting image build for Debian    " \
@@ -71,20 +69,22 @@ RUN set -x; echo "Starting image build for Debian    " \
 # FIXME: install gcc-multilib
 # FIXME: add mips and powerpc architectures
 
-FROM osx-cross-base AS osx-cross
-ARG OSX_CROSS_COMMIT
 WORKDIR "${OSX_CROSS_PATH}"
 # install osxcross:
 RUN git clone https://github.com/tpoechtrager/osxcross.git . \
- && git checkout -q "${OSX_CROSS_COMMIT}" \
- && rm -rf ./.git
-COPY --from=osx-sdk "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
-ARG OSX_VERSION_MIN
-RUN UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN} ./build.sh
+ && git checkout -q "${OSX_CROSS_COMMIT:-50e86ebca7d14372febd0af8cd098705049161b9}" 
 
-FROM osx-cross-base AS final
-LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
-ARG DEBIAN_FRONTEND=noninteractive
+# install osx sdk
+COPY --from=ghcr.io/gythialy/golang-cross/osx-sdk:macos-12.3@sha256:6fc96c49165b28ed79e4228bcf59a001232a8a8e6c1d942a592dfe6e33352640 "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
 
-COPY --from=osx-cross "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
+# https://github.com/tpoechtrager/osxcross/issues/313
+COPY patch/osxcross-08-52-08.patch "${OSX_CROSS_PATH}/"
+RUN  patch -p1 < osxcross-08-52-08.patch
+
+RUN \
+  UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN:-10.12} ./build.sh \
+  && ./build_compiler_rt.sh \
+  && rm -rf *~ build *.tar.xz \
+  && rm -rf ./.git
+
 ENV PATH=${OSX_CROSS_PATH}/target/bin:$PATH

@@ -1,0 +1,15 @@
+diff --git a/wrapper/target.cpp b/wrapper/target.cpp
+index 82bf65c404efed9b88da0fe3e74b5205df0b8534..acc6225ae968086c757e445742e5569ed33f4a47 100644
+--- a/wrapper/target.cpp
++++ b/wrapper/target.cpp
+@@ -743,6 +743,10 @@ bool Target::setup() {
+         fargs.push_back("-Qunused-arguments");
+       }
+ 
++      if ((SDKOSNum >= OSVersion(11, 1)) && (stdlib == StdLib::libcxx)) {
++          fargs.push_back("-lc++");
++      }
++
+       if (stdlib == StdLib::libstdcxx && usegcclibs && targetarch.size() < 2 &&
+           !isGCH()) {
+         // Use libs from './build_gcc' installation
