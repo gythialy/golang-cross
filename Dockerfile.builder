@@ -83,6 +83,7 @@ RUN  patch -p1 < osxcross-08-52-08.patch
 
 RUN \
   UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN:-10.12} ./build.sh \
+  && ./build_compiler_rt.sh \
   && rm -rf *~ build *.tar.xz \
   && rm -rf ./.git
 
