@@ -16,10 +16,10 @@ builds:
 - id: example-darwin-amd64
   binary: example
   env:
-    - CGO_ENABLED=1  
-    - CC=o64-clang 
+    - CGO_ENABLED=1
+    - CC=o64-clang
     - CXX=o64-clang++
-  main: ./main.go 
+  main: ./main.go
   goos:
     - darwin
   goarch:
@@ -27,10 +27,10 @@ builds:
 - id: example-darwin-arm64
   binary: example
   env:
-    - CGO_ENABLED=1  
-    - CC=aarch64-apple-darwin20.2-clang
-    - CXX=aarch64-apple-darwin20.2-clang++
-  main: ./main.go 
+    - CGO_ENABLED=1
+    - CC=aarch64-apple-darwin21.4-clang
+    - CXX=aarch64-apple-darwin21.4-clang++
+  main: ./main.go
   goos:
     - darwin
   goarch:
