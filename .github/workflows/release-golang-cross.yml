@@ -21,8 +21,8 @@ jobs:
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v4
-      with: 
-        images:  ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
+      with:
+        images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
         tags: |
           type=raw,value=latest,enable={{is_default_branch}}
           type=semver,pattern={{raw}}
