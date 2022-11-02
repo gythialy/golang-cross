@@ -38,6 +38,7 @@ jobs:
         password: ${{ secrets.DEPLOY_TOKEN }}
     - name: Build and push
       uses: docker/build-push-action@v3
+      id: buildpush
       with:
         context: .
         push: ${{ github.event_name != 'pull_request' }}
@@ -45,12 +46,8 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
     - name: Sign the images
       run: |
-          IFS=',' read -r -a tags <<< ${{ steps.meta.outputs.tags }}
-          for tag in "${tags[@]}"
-          do
-            echo "sign $tag"
-            cosign sign --force "$tag"
-          done
+        echo "sign ${{ steps.buildpush.outputs.digest }}"
+        cosign sign --force "ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross@${{ steps.buildpush.outputs.digest }}"
       shell: bash
       env:
         COSIGN_EXPERIMENTAL: 1
