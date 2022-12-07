@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=1.12.3
-ARG GORELEASER_SHA=1e3729490abedf076bafe8f4526b505b1cd36bf1a60459923ee14d1322678423
+ARG GORELEASER_VERSION=1.13.1
+ARG GORELEASER_SHA=136fecfb2e2f3a7965274ad5e2571985d8b2fa724b6536874f082e4b0bb9f344
 RUN  \
 	wget https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
