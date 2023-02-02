@@ -8,7 +8,7 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=gcr.io/projectsigstore/cosign:v1.13.1@sha256:fd5b09be23ef1027e1bdd490ce78dcc65d2b15902e1f4ba8e04f3b4019cc1057 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.60.1@sha256:aecec041ecc7cb8ffc83b2cadc8a2930cb2a6c8afef69ed4093a3345ea88c63c /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.69.1@sha256:27e9373f5d3dd65b8675723f868e43c14cd777b59c1fee47e60858c37c99f385 /syft /usr/local/bin/syft
 
 ARG GO_VERSION=go1.20
 ARG GOLANG_DIST_SHA=5a9ebcc65c1cce56e0d2dc616aff4c4cedcfbda8cc6f0288cc08cda3b18dcbf1
@@ -44,7 +44,7 @@ ARG KO_VERSION=0.12.0
 ARG KO_SHA=05aa77182fa7c55386bd2a210fd41298542726f33bbfc9c549add3a66f7b90ad
 RUN  \
 	KO_DOWNLOAD_FILE=ko_${KO_VERSION}_Linux_x86_64.tar.gz && \
-	KO_DOWNLOAD_URL=https://github.com/google/ko/releases/download/v${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
+	KO_DOWNLOAD_URL=https://github.com/ko-build/ko/releases/download/v${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
 	wget ${KO_DOWNLOAD_URL} && \
 	echo "$KO_SHA $KO_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
 	tar -xzf $KO_DOWNLOAD_FILE -C /usr/bin/ ko && \
