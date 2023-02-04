@@ -1,28 +1,18 @@
 name: Welcome
 
 on:
-  pull_request:
-    types: [opened, closed]
-  issues:
+  pull_request_target: 
+    types: [opened]
+  issues: 
     types: [opened]
 
 jobs:
-  run:
+  welcome:
     runs-on: ubuntu-latest
     steps:
-      - uses: wow-actions/welcome@v1
+      - name: First interaction
+        uses: actions/first-interaction@v1
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FIRST_ISSUE: |
-            👋 @{{ author }}
-             Thanks for opening your first issue here! Be sure to follow the issue template!
-
-          FIRST_PR: |
-            👋 @{{ author }}
-            Thanks for opening this pull request! Please check out our contributing guidelines.
-
-          FIRST_PR_MERGED: |
-            🎉 @{{ author }}
-            Congrats on merging your first pull request! We here at behaviorbot are proud of you!
-
-          STAR_MESSAGE: If you like this project, please ⭐star⭐ our repo.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: "Hey, thanks for opening your first issue! 🙂 Be sure to check out the contribution guidelines if you haven't already. Thanks!"
+          pr-message: "Welcome, new contributor! congrats on your first PR! 👋👋👋"
