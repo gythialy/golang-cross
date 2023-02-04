@@ -26,6 +26,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: sigstore/cosign-installer@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
     - name: Get Repo Owner
       id: get_repo_owner
       run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
@@ -56,6 +58,8 @@ jobs:
           OSX_CROSS_COMMIT=${{ github.event.inputs.osxcross-git-hash || '50e86ebca7d14372febd0af8cd098705049161b9' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     - name: Sign the images
       run: |
         echo "sign ${{ steps.buildpush.outputs.digest }}"
