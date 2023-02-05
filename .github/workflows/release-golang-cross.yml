@@ -37,7 +37,7 @@ jobs:
       with:
         registry: ghcr.io
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.DEPLOY_TOKEN }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build and push
       uses: docker/build-push-action@v4
       id: buildpush
@@ -55,4 +55,4 @@ jobs:
       shell: bash
       env:
         COSIGN_EXPERIMENTAL: 1
-        DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
+        DOCKER_PASSWD: ${{ secrets.GITHUB_TOKEN }}
