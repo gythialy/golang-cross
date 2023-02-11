@@ -8,7 +8,7 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=gcr.io/projectsigstore/cosign:v1.13.1@sha256:fd5b09be23ef1027e1bdd490ce78dcc65d2b15902e1f4ba8e04f3b4019cc1057 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.69.1@sha256:27e9373f5d3dd65b8675723f868e43c14cd777b59c1fee47e60858c37c99f385 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.71.0@sha256:7f33ef372f067e24da7bf404308801e8f59612f49710c02695276e5561312242 /syft /usr/local/bin/syft
 
 ARG GO_VERSION=go1.20
 ARG GOLANG_DIST_SHA=5a9ebcc65c1cce56e0d2dc616aff4c4cedcfbda8cc6f0288cc08cda3b18dcbf1
