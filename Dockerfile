@@ -25,18 +25,17 @@ RUN \
 # install goreleaser
 ARG GORELEASER_VERSION=v1.15.2
 ARG GORELEASER_SHA=1730c4455756d80725c36752e76a0e200ab26a8a62b6cdaabff002573c382aa9
+# RUN \
+# 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
+# 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
+# 		rm -rf checksums.txt.pem
 RUN  \
-	wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 	GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz && \
 	GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE} && \
-	# COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert checksums.txt.pem \
-	# --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig \
-	# https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
 	wget ${GORELEASER_DOWNLOAD_URL} && \
 	echo "$GORELEASER_SHA $GORELEASER_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
 	tar -xzf $GORELEASER_DOWNLOAD_FILE -C /usr/bin/ goreleaser && \
 	rm $GORELEASER_DOWNLOAD_FILE && \
-	# rm checksums.txt.pem && \
 	goreleaser -v
 
 # install ko

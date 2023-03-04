@@ -54,5 +54,4 @@ jobs:
         cosign sign --force "ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross@${{ steps.buildpush.outputs.digest }}"
       shell: bash
       env:
-        COSIGN_EXPERIMENTAL: 1
         DOCKER_PASSWD: ${{ secrets.GITHUB_TOKEN }}
