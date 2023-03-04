@@ -1,0 +1,23 @@
+name: Update depdencies
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '13 16 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@v3
+    - name: Check for update
+      run: |
+        bash scripts/check-update.sh
+    - name: Commit and push if changed
+      run: |-
+        git remote set-url origin https://${GITHUB_TOKEN}@github.com/gythialy/golang-cross.git
+        git config --global user.email "gythialy.koo+github@gmail.com"
+        git config --global user.name "Commiter Bot"
+        git commit -a -m "🤖 Updated depdencies $(date +"%Y-%m-%d")" || exit 0
+        git push
