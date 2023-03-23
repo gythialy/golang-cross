@@ -9,7 +9,7 @@ ARG DEB_VERSION
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
- && echo "deb http://security.debian.org/debian-security $(lsb_release -cs)-security main contrib non-free" > /etc/apt/sources.list.d/security.list
+ && echo "deb http://security.debian.org/debian-security $(lsb_release -cs)-security main contrib non-free" > /etc/apt/sources.list.d/security.list \
  && dpkg --add-architecture arm64                      \
  && apt-get update                                     \
  && apt-get dist-upgrade -y -q                         \
