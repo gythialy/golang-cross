@@ -59,6 +59,7 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         push: ${{ github.ref_name == 'master' }}
+        pull: true
         cache-from: type=gha
         cache-to: type=gha,mode=max
         tags: tykio/golang-cross:${{ matrix.tag || format( '{0}-{1}', matrix.gover,  matrix.debver) }}
