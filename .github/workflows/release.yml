@@ -14,7 +14,6 @@ jobs:
       fail-fast: false
       matrix:
         gover:
-          - "1.16"
           - "1.17"
           - "1.18"
           - "1.19"
@@ -38,6 +37,9 @@ jobs:
           - gover: "1.16"
             debver: buster
             tag: "1.16-buster"
+          - gover: "1.16"
+            debver: bullseye
+            tag: "1.16-bullseye"
 
         
     runs-on: ubuntu-latest
