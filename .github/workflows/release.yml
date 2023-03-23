@@ -8,9 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-
   build:
- 
+    name: go ${{ matrix.tag || format( '{0}-{1}', matrix.gover,  matrix.debver) }} 
     strategy:
       fail-fast: false
       matrix:
@@ -23,8 +22,6 @@ jobs:
         debver:
           - buster
           - bullseye
-        # The include section below is not used any more
-        # Left here for posterity in case we ever need different variants in the future
         include:
           - gover: "1.15"
             debver: stretch
@@ -38,6 +35,9 @@ jobs:
           - gover: "1.16"
             debver: buster
             tag: "1.16"
+          - gover: "1.16"
+            debver: buster
+            tag: "1.16-buster"
 
         
     runs-on: ubuntu-latest
