@@ -28,10 +28,18 @@ jobs:
         include:
           - gover: "1.15"
             debver: stretch
-            tag: el7
+            tag: "1.15-el7"
           - gover: "1.15"
             debver: buster
+            tag: "1.15"
+          - gover: "1.16"
+            debver: stretch
+            tag: "1.16-el7"
+          - gover: "1.16"
+            debver: buster
+            tag: "1.16"
 
+        
     runs-on: ubuntu-latest
  
     steps:
@@ -45,13 +53,13 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
             
-    - name: Build and push go ${{ format( '{0}-{1}', matrix.gover, matrix.tag || matrix.debver) }} based image
+    - name: Build and push go ${{ matrix.tag || format( '{0}-{1}', matrix.gover,  matrix.debver) }} based image
       uses: docker/build-push-action@v4
       with:
         push: ${{ github.ref_name == 'master' }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        tags: tykio/golang-cross:${{ format( '{0}-{1}', matrix.gover, matrix.tag || matrix.debver) }}
+        tags: tykio/golang-cross:${{ matrix.tag || format( '{0}-{1}', matrix.gover,  matrix.debver) }}
         build-args: |
           GO_VERSION=${{ matrix.gover }}
           DEB_VERSION=${{ matrix.debver }}
