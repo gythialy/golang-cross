@@ -10,6 +10,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
  && dpkg --add-architecture arm64                      \
+ && dpkg --add-architecture ppc64el                      \
+ && dpkg --add-architecture s390x                      \
  && apt-get update                                     \
  && apt-get dist-upgrade -y -q                         \
         autoconf                                       \
@@ -23,6 +25,8 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
         clang                                          \
         git-core                                       \
         crossbuild-essential-arm64                     \
+        crossbuild-essential-s390x                     \
+        crossbuild-essential-ppc64el                   \
         curl                                           \
         libtool                                        \
         multistrap                                     \
