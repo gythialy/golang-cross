@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       builder-tag:
-        description: golang cross builder tag name, with default value `v1.20.3-0`
+        description: golang cross builder tag name, with default value `v1.20.4-0`
       golang-version:
         description: golang version, with default value `1.20`
       osxcross-git-hash:
@@ -20,7 +20,7 @@ jobs:
       packages: write
       contents: read
     env:
-      GOLANG_CROSS_TAG: ${{ github.event.inputs.builder-tag || 'v1.20.3-0' }}
+      GOLANG_CROSS_TAG: ${{ github.event.inputs.builder-tag || 'v1.20.4-0' }}
       DOCKER_REGISTRY: "ghcr.io"
 
     steps:
