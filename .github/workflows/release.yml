@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: '0 0 * * 1' # Run every Monday at 12:00 AM UTC
   pull_request:
   workflow_dispatch:
 
