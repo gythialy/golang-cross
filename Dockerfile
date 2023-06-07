@@ -6,12 +6,12 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-COPY --from=gcr.io/projectsigstore/cosign:v2.0.0@sha256:728944a9542a7235b4358c4ab2bcea855840e9d4b9594febca5c2207f5da7f38 /ko-app/cosign /usr/local/bin/cosign
+COPY --from=gcr.io/projectsigstore/cosign:v2.0.2@sha256:a95d7c4ab27e48aaf89253e0703014709129f010578be809b6c95ccee908fa1b /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.73.0@sha256:6a13beb5cc8eedb2a42a5b91a69a36105880a2a1fdba75cc8c4dbcd61a0eed2b /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.83.0@sha256:69fcf21cdd4c577d6949dca4d28549d19724b244dfb539509544be166b53ead3 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=go1.20.4
-ARG GOLANG_DIST_SHA=698ef3243972a51ddb4028e4a1ac63dc6d60821bf18e59a807e051fee0a385bd
+ARG GO_VERSION=go1.20.5
+ARG GOLANG_DIST_SHA=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
