@@ -4,14 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       builder-tag:
-        description: golang cross builder tag name, with default value `v1.20.4-0`
+        description: golang cross builder tag name
+        default: v1.20.5-0
       golang-version:
-        description: golang version, with default value `1.20`
+        description: golang version
+        default: '1.20.5'
       osxcross-git-hash:
-        description: git commit hash of osx-cross project, with default value `50e86ebca7d14372febd0af8cd098705049161b9`
+        description: git commit hash of osx-cross project
+        default: '50e86ebca7d14372febd0af8cd098705049161b9'
       osx-min-version:
-        description: minimal macOS SDK deployment target, with default value `10.12`
-
+        description: minimal macOS SDK deployment target
+        default: '10.12'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,7 +23,7 @@ jobs:
       packages: write
       contents: read
     env:
-      GOLANG_CROSS_TAG: ${{ github.event.inputs.builder-tag || 'v1.20.4-0' }}
+      GOLANG_CROSS_TAG: ${{ github.event.inputs.builder-tag }}
       DOCKER_REGISTRY: "ghcr.io"
 
     steps:
@@ -53,9 +56,9 @@ jobs:
         file: Dockerfile.builder
         push: ${{ github.event_name != 'pull_request' }}
         build-args: |
-          GO_VERSION=${{ github.event.inputs.golang-version || '1.20' }}
-          OSX_VERSION_MIN=${{ github.event.inputs.osx-min-version || '10.12' }}
-          OSX_CROSS_COMMIT=${{ github.event.inputs.osxcross-git-hash || '50e86ebca7d14372febd0af8cd098705049161b9' }}
+          GO_VERSION=${{ github.event.inputs.golang-version }}
+          OSX_VERSION_MIN=${{ github.event.inputs.osx-min-version }}
+          OSX_CROSS_COMMIT=${{ github.event.inputs.osxcross-git-hash }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha

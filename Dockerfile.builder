@@ -1,11 +1,11 @@
 # golang parameters
-ARG GO_VERSION=1.20.4
+ARG GO_VERSION=1.20.5
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
 ARG OSX_CROSS_COMMIT=50e86ebca7d14372febd0af8cd098705049161b9
 
-FROM golang:${GO_VERSION:-1.19.5}-bullseye AS base
+FROM golang:${GO_VERSION:-1.20.5}-bullseye AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
