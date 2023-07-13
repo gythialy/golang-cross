@@ -1,5 +1,5 @@
 .PHONY: clean lint changelog snapshot release
-.PHONY: build 
+.PHONY: build
 .PHONY: deps
 
 # Check for required command tools to build or stop immediately
@@ -39,8 +39,8 @@ snapshot:
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(GOPATH)/src:/go/src \
 		-w /golang-cross-example \
-		ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --snapshot --rm-dist
-		
+		ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --snapshot --clean
+
 release: changelog
 	docker run --rm --privileged \
 		-e GITHUB_TOKEN=$(GITHUB_TOKEN) \
@@ -49,8 +49,8 @@ release: changelog
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(GOPATH)/src:/go/src \
 		-w /golang-cross-example \
-		ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --rm-dist --release-notes=CHANGELOG.md
+		ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --clean --release-notes=CHANGELOG.md
 
-lint: 
+lint:
 	golangci-lint run --fix
 
