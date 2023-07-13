@@ -57,23 +57,6 @@ builds:
   goarch:
     - amd64
 
-archives:
-- format: tar.gz
-  format_overrides:
-    - goos: windows
-      format: zip
-  name_template: "{{ .Binary }}-v{{ .Version }}-{{ .ShortCommit }}-{{ .Os }}-{{ .Arch }}"
-  replacements:
-    amd64: x64
-    arm64: ARM64
-    darwin: macOS
-    linux: Linux
-    windows: Windows
-  # files:
-  # - README.md
-  # - LICENSE
-  allow_different_binary_count: true
-
 sboms:
   - artifacts: binary
 
@@ -82,9 +65,3 @@ checksum:
 
 snapshot:
   name_template: SNAPSHOT-{{.ShortCommit}}
-
-# release:
-#   github:
-#     owner: gythialy
-#     name: golang-cross
-#   prerelease: auto
