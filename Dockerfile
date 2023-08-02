@@ -51,10 +51,6 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
     echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
     apt-get update && apt-get install -y docker-ce-cli
 
-# Install AWS CLI v2
-RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip" && \
-    cd /tmp && unzip awscliv2.zip && sudo ./aws/install --bin-dir /usr/bin --install-dir /usr/aws-cliv2
-
 COPY upgrade-git-on-stretch.sh /
 RUN /upgrade-git-on-stretch.sh ${DEB_VERSION}
 RUN apt-get -y autoremove && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
