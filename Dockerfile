@@ -1,16 +1,15 @@
 # Committs to master will trigger a push to Dockerhub
 
-ARG GO_VERSION=1.15.15
-ARG DEB_VERSION=stretch
+ARG GO_VERSION=1.19.12
+ARG DEB_VERSION=bullseye
 
 FROM golang:${GO_VERSION}-${DEB_VERSION} AS base
 
 ARG DEB_VERSION
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
-RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
- && dpkg --add-architecture arm64                      \
- && dpkg --add-architecture ppc64el                      \
+RUN dpkg --add-architecture arm64                      \
+ && dpkg --add-architecture ppc64el                    \
  && dpkg --add-architecture s390x                      \
  && apt-get update                                     \
  && apt-get dist-upgrade -y -q                         \
@@ -51,6 +50,10 @@ RUN echo "Starting image build for $(grep PRETTY_NAME /etc/os-release)" \
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
     echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
     apt-get update && apt-get install -y docker-ce-cli
+
+# Install AWS CLI v2
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip" && \
+    cd /tmp && unzip awscliv2.zip && sudo ./aws/install --bin-dir /usr/bin --install-dir /usr/aws-cliv2
 
 COPY upgrade-git-on-stretch.sh /
 RUN /upgrade-git-on-stretch.sh ${DEB_VERSION}
