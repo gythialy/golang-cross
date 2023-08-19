@@ -1,0 +1,48 @@
+name: Pack OSX SDK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+    env:
+      OSX_TAG: v13.3
+      DOCKER_REGISTRY: "ghcr.io"
+    steps:
+      # - name: Setup Xcode
+      #   uses: maxim-lobanov/setup-xcode@v1
+      #   with:
+      #     xcode-version: latest
+      - uses: actions/checkout@v3
+      - name: Checkout osxcross
+        uses: actions/checkout@v3
+        with:
+          repository: "tpoechtrager/osxcross"
+          ref: "3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72"
+          path: "osxcross"
+      - name: Build OSX SDK
+        run: ./osxcross/tools/gen_sdk_package.sh
+      - name: Get Repo Owner
+        id: get_repo_owner
+        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY}}
+          username: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        id: buildpush
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.DOCKER_REGISTRY}}/${{ steps.get_repo_owner.outputs.repo_owner }}/osx-sdk:${{ env.OSX_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

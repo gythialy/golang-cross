@@ -1,10 +1,9 @@
 FROM debian:bullseye-slim
 
-# OS-X SDK parameters
-ARG OSX_SDK=MacOSX13.sdk
-ARG OSX_SDK_SUM=38896d36d3dfbd2a154e2c162cc725d375a77c43ca07810aaf2b34f85971e7c5
-
 ENV OSX_CROSS_PATH=/osxcross
 
-COPY ${OSX_SDK}.tar.xz "${OSX_CROSS_PATH}/tarballs/${OSX_SDK}.tar.xz"
-RUN echo "${OSX_SDK_SUM}"  "${OSX_CROSS_PATH}/tarballs/${OSX_SDK}.tar.xz" | sha256sum -c -
+COPY "${OSX_CROSS_PATH}/*.tar.xz" "${OSX_CROSS_PATH}/tarballs/"
+
+RUN \
+  sha256sum "${OSX_CROSS_PATH}/tarballs/*.tar.xz" > "${OSX_CROSS_PATH}/tarballs/sha256sum.txt" && \
+  cat "${OSX_CROSS_PATH}/tarballs/sha256sum.txt"
