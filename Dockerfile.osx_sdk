@@ -2,8 +2,7 @@ FROM debian:bullseye-slim
 
 ENV OSX_CROSS_PATH=/osxcross
 
-COPY "${OSX_CROSS_PATH}/*.tar.xz" "${OSX_CROSS_PATH}/tarballs/"
+WORKDIR "${OSX_CROSS_PATH}"
 
-RUN \
-  sha256sum "${OSX_CROSS_PATH}/tarballs/*.tar.xz" > "${OSX_CROSS_PATH}/tarballs/sha256sum.txt" && \
-  cat "${OSX_CROSS_PATH}/tarballs/sha256sum.txt"
+COPY "./*.tar.xz" "${OSX_CROSS_PATH}/"
+COPY ./sha256sum.txt "${OSX_CROSS_PATH}/"
