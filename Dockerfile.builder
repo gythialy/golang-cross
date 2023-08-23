@@ -3,9 +3,9 @@ ARG GO_VERSION=1.21.0
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12
-ARG OSX_CROSS_COMMIT=50e86ebca7d14372febd0af8cd098705049161b9
+ARG OSX_CROSS_COMMIT=3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72
 
-FROM golang:${GO_VERSION:-1.20.5}-bullseye AS base
+FROM golang:${GO_VERSION:-1.21.0}-bullseye AS base
 
 ARG APT_MIRROR
 RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
@@ -72,10 +72,10 @@ RUN set -x; echo "Starting image build for Debian    " \
 WORKDIR "${OSX_CROSS_PATH}"
 # install osxcross:
 RUN git clone https://github.com/tpoechtrager/osxcross.git . \
- && git checkout -q "${OSX_CROSS_COMMIT:-50e86ebca7d14372febd0af8cd098705049161b9}"
+ && git checkout -q "${OSX_CROSS_COMMIT:-3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72}"
 
 # install osx sdk
-COPY --from=ghcr.io/gythialy/golang-cross/osx-sdk:macos-12.3@sha256:6fc96c49165b28ed79e4228bcf59a001232a8a8e6c1d942a592dfe6e33352640 "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
+COPY --from=ghcr.io/gythialy/osx-sdk:v13@sha256:c0654de9a559cf9852a40a925761882a9147dd0dd35f87eaba6a6edc6c5bde43 "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
 
 # https://github.com/tpoechtrager/osxcross/issues/313
 COPY patch/osxcross-08-52-08.patch "${OSX_CROSS_PATH}/"

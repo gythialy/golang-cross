@@ -1,8 +1,7 @@
-FROM debian:bullseye-slim
+FROM debian:stable-slim
 
 ENV OSX_CROSS_PATH=/osxcross
 
 WORKDIR "${OSX_CROSS_PATH}"
 
-COPY "./*.tar.xz" "${OSX_CROSS_PATH}/"
-COPY ./sha256sum.txt "${OSX_CROSS_PATH}/"
+COPY "./MacOSX13.sdk.tar.xz" "${OSX_CROSS_PATH}/tarballs/"
