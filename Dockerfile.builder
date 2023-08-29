@@ -5,66 +5,69 @@ ARG GO_VERSION=1.21.0
 ARG OSX_VERSION_MIN=10.12
 ARG OSX_CROSS_COMMIT=3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72
 
-FROM golang:${GO_VERSION:-1.21.0}-bullseye AS base
+FROM ghcr.io/gythialy/osx-sdk:v13 AS osx-sdk
 
-ARG APT_MIRROR
-RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
- && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
+FROM golang:${GO_VERSION:-1.21.0}-bookworm AS base
+
+# ARG APT_MIRROR
+# RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
+#   && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
 
 ENV OSX_CROSS_PATH=/osxcross
 
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN set -x; echo "Starting image build for Debian    " \
- && dpkg --add-architecture arm64                      \
- && dpkg --add-architecture armel                      \
- && dpkg --add-architecture armhf                      \
- && dpkg --add-architecture i386                       \
- && dpkg --add-architecture mips                       \
- && dpkg --add-architecture mipsel                     \
- && dpkg --add-architecture powerpc                    \
- && dpkg --add-architecture ppc64el                    \
- && dpkg --add-architecture s390x                      \
- && apt-get update                                     \
- && apt-get install -y -q                              \
-        autoconf                                       \
-        automake                                       \
-        autotools-dev                                  \
-        bc                                             \
-        binfmt-support                                 \
-        binutils-multiarch                             \
-        binutils-multiarch-dev                         \
-        build-essential                                \
-        clang                                          \
-        crossbuild-essential-arm64                     \
-        crossbuild-essential-armel                     \
-        crossbuild-essential-armhf                     \
-        crossbuild-essential-mipsel                    \
-        crossbuild-essential-ppc64el                   \
-        crossbuild-essential-s390x                     \
-        curl                                           \
-        devscripts                                     \
-        gdb                                            \
-        git-core                                       \
-        libtool                                        \
-        llvm                                           \
-        mercurial                                      \
-        multistrap                                     \
-        patch                                          \
-        software-properties-common                     \
-        subversion                                     \
-        wget                                           \
-        xz-utils                                       \
-        cmake                                          \
-        qemu-user-static                               \
-        libxml2-dev                                    \
-        lzma-dev                                       \
-        openssl                                        \
-        mingw-w64                                      \
-        musl-tools                                     \
-        libssl-dev                                  && \
-				apt -y autoremove && \
-    		apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+  && dpkg --add-architecture arm64                     \
+  && dpkg --add-architecture armel                     \
+  && dpkg --add-architecture armhf                     \
+  && dpkg --add-architecture i386                      \
+  && dpkg --add-architecture mips                      \
+  && dpkg --add-architecture mipsel                    \
+  && dpkg --add-architecture powerpc                   \
+  && dpkg --add-architecture ppc64el                   \
+  && dpkg --add-architecture s390x                     \
+  && apt-get update                                    \
+  && apt-get install -y -q                             \
+  autoconf                                       \
+  automake                                       \
+  autotools-dev                                  \
+  bc                                             \
+  binfmt-support                                 \
+  binutils-multiarch                             \
+  binutils-multiarch-dev                         \
+  build-essential                                \
+  clang                                          \
+  crossbuild-essential-arm64                     \
+  crossbuild-essential-armel                     \
+  crossbuild-essential-armhf                     \
+  crossbuild-essential-mipsel                    \
+  crossbuild-essential-ppc64el                   \
+  crossbuild-essential-s390x                     \
+  curl                                           \
+  devscripts                                     \
+  gdb                                            \
+  git-core                                       \
+  libtool                                        \
+  llvm                                           \
+  mercurial                                      \
+  multistrap                                     \
+  patch                                          \
+  software-properties-common                     \
+  subversion                                     \
+  wget                                           \
+  xz-utils                                       \
+  cmake                                          \
+  qemu-user-static                               \
+  libxml2-dev                                    \
+  lzma-dev                                       \
+  openssl                                        \
+  mingw-w64                                      \
+  musl-tools                                     \
+  libssl-dev                                     \
+  && apt -y autoremove                           \
+  && apt-get clean                               \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # FIXME: install gcc-multilib
 # FIXME: add mips and powerpc architectures
@@ -72,10 +75,10 @@ RUN set -x; echo "Starting image build for Debian    " \
 WORKDIR "${OSX_CROSS_PATH}"
 # install osxcross:
 RUN git clone https://github.com/tpoechtrager/osxcross.git . \
- && git checkout -q "${OSX_CROSS_COMMIT:-3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72}"
+  && git checkout -q "${OSX_CROSS_COMMIT:-3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72}"
 
 # install osx sdk
-COPY --from=ghcr.io/gythialy/osx-sdk:v13@sha256:c0654de9a559cf9852a40a925761882a9147dd0dd35f87eaba6a6edc6c5bde43 "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
+COPY --from=osx-sdk "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
 
 # https://github.com/tpoechtrager/osxcross/issues/313
 COPY patch/osxcross-08-52-08.patch "${OSX_CROSS_PATH}/"

@@ -28,8 +28,8 @@ builds:
   binary: example
   env:
     - CGO_ENABLED=1
-    - CC=aarch64-apple-darwin21.4-clang
-    - CXX=aarch64-apple-darwin21.4-clang++
+    - CC=oa64-clang
+    - CXX=oa64-clang++
   main: ./main.go
   goos:
     - darwin
