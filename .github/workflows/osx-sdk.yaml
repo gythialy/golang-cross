@@ -19,7 +19,17 @@ jobs:
       #   with:
       #     xcode-version: latest
       - name: Set up Docker
-        uses: douglascamata/setup-docker-macos-action@v1-alpha
+        uses: crazy-max/ghaction-setup-docker@v1.4.0
+        env:
+          SIGN_QEMU_BINARY: 1
+          COLIMA_START_ARGS: --cpu 4 --memory 8 --disk 32
+          daemon-config: |
+            {
+              "debug": true,
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - uses: actions/checkout@v3

@@ -24,7 +24,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
     ```
      docker build --platform linux/amd64 -f Dockerfile.builder -t ghcr.io/gythialy/golang-cross-builder:v1.18 .
     ```
-    > Please follow the guide to [pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first
+    > Please follow the guide to [pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first or build by [GitHub Action](https://github.com/gythialy/golang-cross/actions/workflows/osx-sdk.yaml)
   - Build golang-cross image
     ```
     docker build --build-arg GO_VERSION=1.16.2 \
@@ -35,6 +35,7 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
       -t ghcr.io/gythialy/golang-cross:latest .
     ```
     > The default arguments can be overridden with `--build-arg`
+
 ## How to use
 
 - Prepare [GoReleaser](https://goreleaser.com/intro/) configuration
