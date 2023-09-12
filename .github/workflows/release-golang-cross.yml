@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: sigstore/cosign-installer@v3
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
     - name: Get Repo Owner
       id: get_repo_owner
       run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
