@@ -21,6 +21,12 @@ jobs:
         debver:
           - bullseye
         include:
+          - gover: "1.21"
+            debver: trixie
+            tag: "1.21"
+          - gover: "1.20"
+            debver: bookworm
+            tag: "1.20"
           - gover: "1.16"
             debver: bullseye
             tag: "1.16"
