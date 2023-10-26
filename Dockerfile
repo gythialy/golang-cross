@@ -68,48 +68,39 @@ RUN \
 ARG DOCKER_CLI_VERSION=23.0.1
 # ARG DOCKER_CLI_SHA=7ea11ecb100fdc085dbfd9ab1ff380e7f99733c890ed815510a5952e5d6dd7e0
 RUN  \
-    DOCKER_CLI_DOWNLOAD_FILE=docker-${DOCKER_CLI_VERSION}.tgz && \
-    curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz && \
-    # echo "$DOCKER_CLI_SHA $DOCKER_CLI_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
-    tar xzvf ${DOCKER_CLI_DOWNLOAD_FILE} --strip 1 -C /usr/local/bin docker/docker && \
-    rm ${DOCKER_CLI_DOWNLOAD_FILE} && \
-    docker -v
+	DOCKER_CLI_DOWNLOAD_FILE=docker-${DOCKER_CLI_VERSION}.tgz && \
+	curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz && \
+	# echo "$DOCKER_CLI_SHA $DOCKER_CLI_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+	tar xzvf ${DOCKER_CLI_DOWNLOAD_FILE} --strip 1 -C /usr/local/bin docker/docker && \
+	rm ${DOCKER_CLI_DOWNLOAD_FILE} && \
+	docker -v
 
 # install Buildx
 ARG BUILDX_VERSION=v0.11.2
 ARG BUILDX_SHA=311568ee69715abc46163fd688e56c77ab0144ff32e116d0f293bfc3470e75b7
 RUN \
-    BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
-    wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
-    echo "${BUILDX_SHA} ${BUILDX_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
-    chmod a+x buildx-${BUILDX_VERSION}.linux-amd64 && \
-    mkdir -p ~/.docker/cli-plugins && \
-    mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
+	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
+	echo "${BUILDX_SHA} ${BUILDX_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
+	chmod a+x buildx-${BUILDX_VERSION}.linux-amd64 && \
+	mkdir -p ~/.docker/cli-plugins && \
+	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
 ARG PACK_VERSION=v0.31.0
 ARG PACK_SHA=2e296f0eea1ab9bc86251662a5500433d1acc2207ac77c374171aa5295c6e54c
 RUN \
-    PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
-    wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
-    echo "${PACK_SHA} ${PACK_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
-    tar xzvf ${PACK_DOWNLOAD_FILE} -C /usr/local/bin pack --no-same-owner  && \
+	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
+	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
+	echo "${PACK_SHA} ${PACK_DOWNLOAD_FILE}" | sha256sum -c - || exit 1 && \
+	tar xzvf ${PACK_DOWNLOAD_FILE} -C /usr/local/bin pack --no-same-owner  && \
 	rm $PACK_DOWNLOAD_FILE
 
-
 # install gcloud sdk
-ENV PATH=/google-cloud-sdk/bin:${PATH} \
-	CLOUDSDK_CORE_DISABLE_PROMPTS=1
-
-RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz && \
-	tar xzf google-cloud-sdk.tar.gz -C / && \
-	rm google-cloud-sdk.tar.gz && \
-	/google-cloud-sdk/install.sh \
-	--disable-installation-options \
-	--bash-completion=false \
-	--path-update=false \
-	--usage-reporting=false && \
-	gcloud info > /root/gcloud-info.txt
+RUN apt-get update && apt-get install -y -q apt-transport-https ca-certificates gnupg \
+	&& echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
+	&& curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-cli -y \
+	&& apt -y autoremove && apt-get clean 
 
 # install goimports
 RUN go install golang.org/x/tools/cmd/goimports@latest
