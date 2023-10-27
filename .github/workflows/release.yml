@@ -45,7 +45,7 @@ jobs:
         pull: true
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        tags: tykio/golang-cross:${{ matrix.tag || format( '{0}-{1}', matrix.gover,  matrix.debver) }}
+        tags: tykio/golang-cross:${{ matrix.tag || format( '{0}-{1}', matrix.gover,  matrix.debver) }},tykio/golang-cross:${{ matrix.tag || format( '{0}-{1}-pgo', matrix.gover,  matrix.debver) }}
         build-args: |
           GO_VERSION=${{ matrix.gover }}
           DEB_VERSION=${{ matrix.debver }}
