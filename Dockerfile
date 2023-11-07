@@ -96,6 +96,11 @@ RUN \
 	tar xzvf ${PACK_DOWNLOAD_FILE} -C /usr/local/bin pack --no-same-owner  && \
 	rm $PACK_DOWNLOAD_FILE
 
+ 
+# update key
+RUN apt-get install debian-keyring debian-archive-keyring \
+    && apt-key update
+
 # install gcloud sdk
 RUN apt-get update && apt-get install -y -q apt-transport-https ca-certificates gnupg \
 	&& echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
