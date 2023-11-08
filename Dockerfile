@@ -10,8 +10,8 @@ COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.0@sha256:280b47054876d415f66a279
 # install syft
 COPY --from=docker.io/anchore/syft:v0.92.0@sha256:981086797ad3cb1be49d763ffaa50f2bd558c354358112f46283dd3bf8cb0c75 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=go1.21.3
-ARG GOLANG_DIST_SHA=1241381b2843fae5a9707eec1f8fb2ef94d827990582c7c7c32f5bdfbfd420c8
+ARG GO_VERSION=go1.21.4
+ARG GOLANG_DIST_SHA=73cac0215254d0c7d1241fa40837851f3b9a8a742d0b54714cbdfb3feaf8f0af
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -87,8 +87,8 @@ RUN \
 	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=v0.31.0
-ARG PACK_SHA=2e296f0eea1ab9bc86251662a5500433d1acc2207ac77c374171aa5295c6e54c
+ARG PACK_VERSION=v0.32.0
+ARG PACK_SHA=f559cf23593240580f9a0c1936b5b1f590cb99f1a3c5da12dde15057703460bd
 RUN \
 	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
 	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
