@@ -1,4 +1,4 @@
-FROM ghcr.io/gythialy/golang-cross-builder:v1.19.5-0
+FROM ghcr.io/gythialy/golang-cross-builder:v1.19.13-0
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
