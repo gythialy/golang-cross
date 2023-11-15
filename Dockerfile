@@ -6,9 +6,9 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.0@sha256:280b47054876d415f66a279e666e35157cae6881f3538599710290c70bb75369 /ko-app/cosign /usr/local/bin/cosign
+COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.1@sha256:88498ed17e61605cd68a5fc9d1fcd756ae0ef2d5515417881d739654accf818f /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.92.0@sha256:981086797ad3cb1be49d763ffaa50f2bd558c354358112f46283dd3bf8cb0c75 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v0.96.0@sha256:64dcff82a5bc1a0363d16c5cc45f01dcfa63e7ac25b9ebac2caef32e18827a06 /syft /usr/local/bin/syft
 
 ARG GO_VERSION=go1.21.4
 ARG GOLANG_DIST_SHA=73cac0215254d0c7d1241fa40837851f3b9a8a742d0b54714cbdfb3feaf8f0af
