@@ -26,7 +26,7 @@ jobs:
       with:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.DEPLOY_TOKEN }}
+        password: ${{ secrets.GITHUB_TOKEN }}
         registry: ghcr.io
         tag_names: true
         no_push: ${{ github.event_name == 'pull_request' }}

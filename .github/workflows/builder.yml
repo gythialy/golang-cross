@@ -27,7 +27,7 @@ jobs:
       with:
         name: ${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
         username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.DEPLOY_TOKEN }}
+        password: ${{ secrets.GITHUB_TOKEN }}
         registry: ghcr.io
         dockerfile: Dockerfile.builder
         tags: "latest,${{ env.GOLANG_CROSS_TAG }}"
@@ -41,4 +41,4 @@ jobs:
       shell: bash
       env:
         COSIGN_EXPERIMENTAL: 1
-        DOCKER_PASSWD: ${{ secrets.DEPLOY_TOKEN }}
+        DOCKER_PASSWD: ${{ secrets.GITHUB_TOKEN }}
