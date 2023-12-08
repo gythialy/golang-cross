@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM scratch
 
 ENV OSX_CROSS_PATH=/osxcross
 
