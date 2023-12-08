@@ -5,6 +5,8 @@ ARG GO_VERSION=1.20.6
 ARG OSX_VERSION_MIN=10.12
 ARG OSX_CROSS_COMMIT=50e86ebca7d14372febd0af8cd098705049161b9
 
+FROM ghcr.io/gythialy/osx-sdk:v12 AS osx-sdk
+
 FROM golang:${GO_VERSION:-1.20.5}-bullseye AS base
 
 ARG APT_MIRROR
@@ -75,7 +77,7 @@ RUN git clone https://github.com/tpoechtrager/osxcross.git . \
  && git checkout -q "${OSX_CROSS_COMMIT:-50e86ebca7d14372febd0af8cd098705049161b9}"
 
 # install osx sdk
-COPY --from=ghcr.io/gythialy/golang-cross/osx-sdk:macos-12.3@sha256:6fc96c49165b28ed79e4228bcf59a001232a8a8e6c1d942a592dfe6e33352640 "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}/"
+COPY --from=osx-sdk "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
 
 # https://github.com/tpoechtrager/osxcross/issues/313
 COPY patch/osxcross-08-52-08.patch "${OSX_CROSS_PATH}/"
