@@ -1,14 +1,13 @@
 # golang parameters
 ARG GO_VERSION=1.21.5
 
-# osxcross parameters
-ARG OSX_VERSION_MIN=10.12
-ARG OSX_CROSS_COMMIT=3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72
-
 FROM ghcr.io/gythialy/osx-sdk:v13 AS osx-sdk
 
 FROM golang:${GO_VERSION:-1.21.5}-bookworm AS base
 
+# osxcross parameters
+ARG OSX_VERSION_MIN=10.12
+ARG OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
 # ARG APT_MIRROR
 # RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
 #   && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list

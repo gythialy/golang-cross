@@ -65,7 +65,7 @@ RUN \
 
 # install Docker CLI
 # docker no longer provides checksum
-ARG DOCKER_CLI_VERSION=23.0.1
+ARG DOCKER_CLI_VERSION=24.0.7
 # ARG DOCKER_CLI_SHA=7ea11ecb100fdc085dbfd9ab1ff380e7f99733c890ed815510a5952e5d6dd7e0
 RUN  \
 	DOCKER_CLI_DOWNLOAD_FILE=docker-${DOCKER_CLI_VERSION}.tgz && \
