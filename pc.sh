@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# goreleaser calls a custom publisher for each artefact
-# packagecloud expects the distro version when pushing
-# this script bridges both by choosing the appropriate list of distro versions from $DEBVERS and $RPMVERS
-# $REPO, $DEBVERS and $RPMVERS are expected to be set by goreleaser
+# goreleaser calls a custom publisher for each artefact packagecloud
+# expects the distro version when pushing this script bridges both by
+# choosing the appropriate list of distro versions from $DEBVERS and
+# $RPMVERS
+# $REPO, $DEBVERS and $RPMVERS are expected to be set by the
+# user
 
 REQUIRED_VARS="PACKAGECLOUD_TOKEN REPO"
 
@@ -63,7 +65,7 @@ for i in $vers; do
     [[ ! -s ${pkg} ]] && echo "File is empty or does not exists" && exit 1
 
     # Yank packages first to enable tag re-use
-    package_cloud yank $REPO/$i $(basename $pkg) || true
-    package_cloud push $REPO/$i $pkg
+    packagecloud rm $REPO/$i $(basename $pkg) || true
+    packagecloud push $REPO/$i $pkg
 
 done

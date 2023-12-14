@@ -9,7 +9,6 @@ ARG DEB_VERSION
 ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN dpkg --add-architecture arm64                      \
- && dpkg --add-architecture ppc64el                    \
  && dpkg --add-architecture s390x                      \
  && apt-get update                                     \
  && apt-get dist-upgrade -y -q                         \
@@ -43,8 +42,7 @@ RUN dpkg --add-architecture arm64                      \
         unzip                                          \
         sudo                                           \
         jq                                             \
-        rpm                                            \
-        ruby-dev
+        rpm
 
 # install docker cli
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
@@ -62,8 +60,8 @@ RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/latest/download
 # experimental features are not enabled for the  CLI - to mitigate that.
 ENV DOCKER_CLI_EXPERIMENTAL=enabled
 
-# Upload to packagecloud.io
-RUN gem install rake package_cloud
+# pc.sh needs packagecloud
+RUN go install github.com/tyklabs/packagecloud@latest
 
 COPY unlock-agent.sh pc.sh /
 COPY daemon.json /etc/docker/daemon.json
