@@ -87,8 +87,8 @@ RUN \
 	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=v0.33.0
-ARG PACK_SHA=c760c337fc1f426bc062c3ccc114b82990dd148b2e829ebe5b7079f0d84f635e
+ARG PACK_VERSION=v0.33.1
+ARG PACK_SHA=1b8e38e40221f8fc231aff07e359e0bd0c0a26ef741d12c13b1e746e469f2abb
 RUN \
 	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
 	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
