@@ -1,7 +1,8 @@
 FROM scratch
 
+ARG SDK_FILE
 ENV OSX_CROSS_PATH=/osxcross
 
 WORKDIR "${OSX_CROSS_PATH}"
 
-COPY "./MacOSX13.sdk.tar.xz" "${OSX_CROSS_PATH}/tarballs/"
+COPY "./${SDK_FILE}" "${OSX_CROSS_PATH}/tarballs/"

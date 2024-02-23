@@ -5,25 +5,29 @@ on:
     inputs:
       builder-tag:
         description: golang cross builder tag name
-        default: v1.22.0
+        default: v1.22.0-0
       golang-version:
         description: golang version
         default: "1.22.0"
       osxcross-git-hash:
         description: git commit hash of osx-cross project
-        default: "3dcc13644cfaa3d7ea6a959acbe0f1a23cf2df72"
+        default: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
       osx-min-version:
         description: minimal macOS SDK deployment target
-        default: "10.12"
+        default: "10.13"
 jobs:
   build:
+    strategy:
+      matrix:
+        codename: [bullseye, bookworm]
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       id-token: write
       packages: write
       contents: read
     env:
-      GOLANG_CROSS_TAG: ${{ github.event.inputs.builder-tag }}
+      GOLANG_CROSS_TAG: ${{ github.event.inputs.builder-tag }}-${{ matrix.codename }}
       DOCKER_REGISTRY: "ghcr.io"
 
     steps:
@@ -59,6 +63,7 @@ jobs:
             GO_VERSION=${{ github.event.inputs.golang-version }}
             OSX_VERSION_MIN=${{ github.event.inputs.osx-min-version }}
             OSX_CROSS_COMMIT=${{ github.event.inputs.osxcross-git-hash }}
+            OS_CODENAME=${{ matrix.codename }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
