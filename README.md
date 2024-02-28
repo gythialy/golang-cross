@@ -12,6 +12,9 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
     ```
   - golang-cross-builder
     ```
+    docker pull ghcr.io/gythialy/golang-cross-builder:v1.22.0-0-bullseye
+    ```
+    ```
     docker pull ghcr.io/gythialy/golang-cross-builder:v1.17.1
     ```
 
@@ -27,9 +30,10 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
     > Please follow the guide to [pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first or build by [GitHub Action](https://github.com/gythialy/golang-cross/actions/workflows/osx-sdk.yaml)
   - Build golang-cross image
     ```
-    docker build --build-arg GO_VERSION=1.16.2 \
+    docker build --build-arg GO_VERSION=1.22.0 \
+      --build-arg OS_CODENAME=bullseye \
       --build-arg GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8 \
-      --build-arg GORELEASER_VERSION=0.162.0 \
+      --build-arg GORELEASER_VERSION=1.24.0 \
       --build-arg GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e \
       -f Dockerfile \
       -t ghcr.io/gythialy/golang-cross:latest .
