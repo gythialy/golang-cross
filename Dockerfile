@@ -12,8 +12,8 @@ COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.3@sha256:8fc9cad121611e8479f65f7
 # install syft
 COPY --from=docker.io/anchore/syft:v0.102.0@sha256:fbbdb5f60a9db9400d49801bf70b19c29ac054b370dbccf538399918bbdf38a7 /syft /usr/local/bin/syft
 
-ARG GO_VERSION=go1.22.0
-ARG GOLANG_DIST_SHA=f6c8a87aa03b92c4b0bf3d558e28ea03006eb29db78917daec5cfb6ec1046265
+ARG GO_VERSION=go1.22.1
+ARG GOLANG_DIST_SHA=aab8e15785c997ae20f9c88422ee35d962c4562212bb0f879d052a35c8307c7f
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -78,8 +78,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.12.1
-ARG BUILDX_SHA=716321df8ca9c82ffe96f37e9f4aa1199d4969795836dbd57ef72d12e3ac5085
+ARG BUILDX_VERSION=v0.13.0
+ARG BUILDX_SHA=ddd69ee2ca3dd61760e771dcd2f3453dc677dfeb42c9484cc2321b96bc1b7c57
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
