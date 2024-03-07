@@ -44,7 +44,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
           tags: |
-            type=raw,value=latest,enable=${{ matrix.codename == 'bookwarm' && github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=latest,enable=${{ matrix.codename == 'bookworm' && github.ref == format('refs/heads/{0}', 'main') }}
             type=raw,value=${{ env.GOLANG_CROSS_TAG }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
