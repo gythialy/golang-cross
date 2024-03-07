@@ -5,10 +5,10 @@ on:
     inputs:
       builder-tag:
         description: golang cross builder tag name
-        default: v1.22.0-0
+        default: v1.22.1-0
       golang-version:
         description: golang version
-        default: "1.22.0"
+        default: "1.22.1"
       osxcross-git-hash:
         description: git commit hash of osx-cross project
         default: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
@@ -21,7 +21,7 @@ jobs:
       matrix:
         codename: [bullseye, bookworm]
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
     permissions:
       id-token: write
       packages: write
@@ -44,7 +44,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ matrix.codename == 'bookwarm' && github.ref == format('refs/heads/{0}', 'main') }}
             type=raw,value=${{ env.GOLANG_CROSS_TAG }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
