@@ -6,7 +6,7 @@ on:
       - created
 
 jobs:
-  build:
+  release:
     strategy:
       matrix:
         codename: [bullseye, bookworm]
@@ -30,13 +30,13 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
           tags: |
-            type=raw,value=latest,enable=${{ matrix.codename == 'bookwarm' && github.ref == format('refs/heads/{0}', 'main') }}
-            type=semver,pattern={{raw}},enable=${{ matrix.codename == 'bookwarm' }}
-            type=semver,pattern={{version}},enable=${{ matrix.codename == 'bookwarm' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ matrix.codename == 'bookwarm' }}
-            type=semver,pattern={{major}},enable=${{ matrix.codename == 'bookwarm' }}
-            type=semver,pattern={{raw}},enable=${{ matrix.codename != 'bookwarm' }},suffix=-${{ matrix.codename }}
-            type=semver,pattern={{version}},enable=${{ matrix.codename != 'bookwarm' }},suffix=-${{ matrix.codename }}
+            type=raw,value=latest,enable=${{ matrix.codename == 'bookworm' }}
+            type=semver,pattern={{raw}},enable=${{ matrix.codename == 'bookworm' }}
+            type=semver,pattern={{version}},enable=${{ matrix.codename == 'bookworm' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ matrix.codename == 'bookworm' }}
+            type=semver,pattern={{major}},enable=${{ matrix.codename == 'bookworm' }}
+            type=semver,pattern={{raw}},enable=${{ matrix.codename != 'bookworm' }},suffix=-${{ matrix.codename }}
+            type=semver,pattern={{version}},enable=${{ matrix.codename != 'bookworm' }},suffix=-${{ matrix.codename }}
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
