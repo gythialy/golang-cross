@@ -1,9 +1,9 @@
 # golang parameters
-ARG GO_VERSION=1.21.7
+ARG GO_VERSION=1.21.8
 
 FROM ghcr.io/gythialy/osx-sdk:v13 AS osx-sdk
 
-FROM golang:${GO_VERSION:-1.21.7}-bookworm AS base
+FROM golang:${GO_VERSION:-1.21.8}-bookworm AS base
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.12

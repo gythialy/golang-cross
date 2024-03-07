@@ -8,10 +8,10 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.3@sha256:8fc9cad121611e8479f65f79f2e5bea58949e8a87ffac2a42cb99cf0ff079ba7 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v0.102.0@sha256:fbbdb5f60a9db9400d49801bf70b19c29ac054b370dbccf538399918bbdf38a7 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v1.0.1@sha256:d49defada853900861d55491ba549ab334148d51b11f23942abecb39ea83d4db /syft /usr/local/bin/syft
 
-ARG GO_VERSION=go1.21.7
-ARG GOLANG_DIST_SHA=13b76a9b2a26823e53062fa841b07087d48ae2ef2936445dc34c4ae03293702c
+ARG GO_VERSION=go1.21.8
+ARG GOLANG_DIST_SHA=538b3b143dc7f32b093c8ffe0e050c260b57fc9d57a12c4140a639a8dd2b4e4f
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
