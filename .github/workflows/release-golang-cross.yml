@@ -30,7 +30,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
           tags: |
-            type=raw,value=latest,enable=${{ matrix.codename == 'bookworm' }}
+            type=raw,value=latest,enable=${{ matrix.codename == 'bookworm' && (github.event.release.target_commitish == 'main' || github.event.release.target_commitish == 'master') }}
             type=semver,pattern={{raw}},enable=${{ matrix.codename == 'bookworm' }}
             type=semver,pattern={{version}},enable=${{ matrix.codename == 'bookworm' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ matrix.codename == 'bookworm' }}
