@@ -25,8 +25,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v1.25.0
-ARG GORELEASER_SHA=6a8b3fab3af586a5b1232d06fa3f413f175a2945559ceea44428e758be17e7df
+ARG GORELEASER_VERSION=v1.25.1
+ARG GORELEASER_SHA=8156fef4026559881de6ba65a3882c5a52a4e5a981e0b316ea051cd617f61cbf
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
