@@ -23,6 +23,7 @@ jobs:
         with:
           branch-suffix: random
           assignees: gythialy
+          title: Automated update dependencies by action
       - name: Check outputs
         if: ${{ steps.cpr.outputs.pull-request-number }}
         run: |
