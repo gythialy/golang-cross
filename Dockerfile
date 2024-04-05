@@ -10,8 +10,8 @@ COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.3@sha256:8fc9cad121611e8479f65f7
 # install syft
 COPY --from=docker.io/anchore/syft:v1.0.1@sha256:d49defada853900861d55491ba549ab334148d51b11f23942abecb39ea83d4db /syft /usr/local/bin/syft
 
-ARG GO_VERSION=go1.21.8
-ARG GOLANG_DIST_SHA=538b3b143dc7f32b093c8ffe0e050c260b57fc9d57a12c4140a639a8dd2b4e4f
+ARG GO_VERSION=go1.21.9
+ARG GOLANG_DIST_SHA=f76194c2dc607e0df4ed2e7b825b5847cb37e34fc70d780e2f6c7e805634a7ea
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v1.24.0
-ARG GORELEASER_SHA=99709684e3f543ed32a771e1565055e43d2ec524e631bcd8d331c2d8ed6a584f
+ARG GORELEASER_VERSION=v1.25.1
+ARG GORELEASER_SHA=8156fef4026559881de6ba65a3882c5a52a4e5a981e0b316ea051cd617f61cbf
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -100,7 +100,7 @@ RUN \
 RUN apt-get update && apt-get install -y -q apt-transport-https ca-certificates gnupg \
 	&& echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
 	&& curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-cli -y \
-	&& apt -y autoremove && apt-get clean 
+	&& apt -y autoremove && apt-get clean
 
 # install goimports
 RUN go install golang.org/x/tools/cmd/goimports@latest
