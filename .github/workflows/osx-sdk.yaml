@@ -22,7 +22,7 @@ jobs:
       #   with:
       #     xcode-version: latest
       - name: Set up Docker
-        uses: crazy-max/ghaction-setup-docker@v3.1.0
+        uses: crazy-max/ghaction-setup-docker@v3.2.0
         env:
           SIGN_QEMU_BINARY: 1
           COLIMA_START_ARGS: --cpu 4 --memory 8 --disk 32
