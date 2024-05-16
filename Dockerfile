@@ -41,8 +41,8 @@ RUN  \
 	goreleaser -v
 
 # install ko
-ARG KO_VERSION=v0.15.2
-ARG KO_SHA=d11f03f23261d16f9e7802291e9d098e84f5daecc7931e8573bece9025b6a2c5
+ARG KO_VERSION=v0.15.3
+ARG KO_SHA=d4d87f057cc8632c2d9de768a175c14515f8d9615e5f585a91ea60c918ffe9c8
 RUN  \
 	KO_DOWNLOAD_FILE=ko_${KO_VERSION#v}_Linux_x86_64.tar.gz && \
 	KO_DOWNLOAD_URL=https://github.com/ko-build/ko/releases/download/${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
