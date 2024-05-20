@@ -8,9 +8,26 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.4@sha256:bed7ba33a8610c1607c16dee696f62bad168814016126abb9da01e9fb7cb2167 /ko-app/cosign /usr/local/bin/cosign
+ARG COSIGN_VERSION=v2.2.4
+ARG COSIGN_SHA=97a6a1e15668a75fc4ff7a4dc4cb2f098f929cbea2f12faa9de31db6b42b17d7
+RUN \ 
+	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
+	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
+	echo "$COSIGN_SHA $COSIGN_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+	mv $COSIGN_DOWNLOAD_FILE /usr/local/bin/cosign && \
+	chmod +x /usr/local/bin/cosign && \
+	cosign version
+
 # install syft
-COPY --from=docker.io/anchore/syft:v1.4.1@sha256:24feb76496d558c52a09a859de569fc71cb147d9aff01edab885accae5363150 /syft /usr/local/bin/syft
+ARG SYFT_VERSION=v1.4.1
+ARG SYFT_SHA=5e4c6a0d1ca28d25e060a29c7cca0aedc50d951bfb270b45bc9a71e86ac6fbe2
+RUN  \
+	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
+	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
+	wget ${SYFT_DOWNLOAD_URL} && \
+	echo "$SYFT_SHA $SYFT_DOWNLOAD_FILE" | sha256sum -c - || exit 1 && \
+	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
+	rm $SYFT_DOWNLOAD_FILE
 
 ARG GO_VERSION=go1.22.3
 ARG GOLANG_DIST_SHA=8920ea521bad8f6b7bc377b4824982e011c19af27df88a815e3586ea895f1b36
