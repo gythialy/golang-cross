@@ -22,11 +22,21 @@ update_golang() {
   local golang_version_file=${TMP_DIR}/golang.json
   curl -fsSL "https://go.dev/dl/?mode=json" >"${golang_version_file}"
 
-  local latest_go_version=$(jq <"${golang_version_file}" -r '[.[].files[] | select(.filename | contains("linux-amd64"))][0] | .version' | sed -e 's/[]\/$*.^[]/\\&/g')
-  local latest_golang_dist_sha=$(jq <"${golang_version_file}" -r '[.[].files[] | select(.filename | contains("linux-amd64"))][0] | .sha256')
+  local latest_go_version
+  local latest_golang_dist_sha
+  latest_go_version=$(jq <"${golang_version_file}" -r '[.[].files[] | select(.filename | contains("linux-amd64"))][0] | .version' | sed -e 's/[]\/$*.^[]/\\&/g')
+  latest_golang_dist_sha=$(jq <"${golang_version_file}" -r '[.[].files[] | select(.filename | contains("linux-amd64"))][0] | .sha256')
 
-  local go_version_old=$(sed -n 's/ARG GO_VERSION=\(.*\)/\1/p' "$DOCKERFILE")
-  local golang_dist_sha_old=$(sed -n 's/ARG GOLANG_DIST_SHA=\(.*\)/\1/p' "$DOCKERFILE")
+  local go_version_old
+  local golang_dist_sha_old
+  go_version_old=$(sed -n 's/ARG GO_VERSION=\(.*\)/\1/p' "$DOCKERFILE")
+  golang_dist_sha_old=$(sed -n 's/ARG GOLANG_DIST_SHA=\(.*\)/\1/p' "$DOCKERFILE")
+
+  # check latest_go_version latest_golang_dist_sha go_version_old golang_dist_sha_old are set
+  if [[ -z "$latest_go_version" || -z "$latest_golang_dist_sha" || -z "$go_version_old" || -z "$golang_dist_sha_old" ]]; then
+    echo "invalid golang version or dist hash value"
+    exit 1
+  fi
 
   if is_darwin; then
     sed -i '' "s/ARG GO_VERSION=$go_version_old/ARG GO_VERSION=$latest_go_version/g" "$DOCKERFILE"
@@ -53,7 +63,7 @@ update_repo() {
     exit 1
   fi
 
-  latest_version=$(cat "${tmpfile}" | grep tag_name | cut -d '"' -f 4)
+  latest_version=$(grep tag_name "${tmpfile}" | cut -d '"' -f 4)
   checksum_file=$(jq <"${tmpfile}" -r --arg name "${file}" '.assets[] | select(.name | endswith($name)).browser_download_url')
 
   if [[ "${checksum_file}" == *checksums.txt ]]; then
