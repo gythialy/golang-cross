@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.22.3
-ARG GOLANG_DIST_SHA=8920ea521bad8f6b7bc377b4824982e011c19af27df88a815e3586ea895f1b36
+ARG GO_VERSION=go1.22.4
+ARG GOLANG_DIST_SHA=ba79d4526102575196273416239cca418a651e049c2b099f3159db85e7bade7d
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v1.26.2
-ARG GORELEASER_SHA=cfbdf12e3ea20e4c3a209d07311f43c2e0baf20d5cce09bcdc232567e0f34307
+ARG GORELEASER_VERSION=v2.0.0
+ARG GORELEASER_SHA=fb8f00ca5d4c923fb8c5587e304cd3a5c3cd6c8baac3344fbce7980d1263983e
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
