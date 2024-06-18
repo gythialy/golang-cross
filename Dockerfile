@@ -8,10 +8,10 @@ COPY entrypoint.sh /
 # install cosign
 COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.4@sha256:bed7ba33a8610c1607c16dee696f62bad168814016126abb9da01e9fb7cb2167 /ko-app/cosign /usr/local/bin/cosign
 # install syft
-COPY --from=docker.io/anchore/syft:v1.4.1@sha256:24feb76496d558c52a09a859de569fc71cb147d9aff01edab885accae5363150 /syft /usr/local/bin/syft
+COPY --from=docker.io/anchore/syft:v1.7.0@sha256:35372cf4e44776927f9222f620ab7dcfb78fa422685d02e10240255feee3c00c /syft /usr/local/bin/syft
 
-ARG GO_VERSION=go1.21.10
-ARG GOLANG_DIST_SHA=e330e5d977bf4f3bdc157bc46cf41afa5b13d66c914e12fd6b694ccda65fcf92
+ARG GO_VERSION=go1.21.11
+ARG GOLANG_DIST_SHA=54a87a9325155b98c85bc04dc50298ddd682489eb47f486f2e6cb0707554abf0
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -23,8 +23,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v1.26.0
-ARG GORELEASER_SHA=e3368a2209fb7ea3a253184ce64ed1251ed36a37ea4476c43582e9381de3dfc7
+ARG GORELEASER_VERSION=v2.0.1
+ARG GORELEASER_SHA=48cea4e770468c85d3ee11e6c2fb7b59af9f28080781d47c48c59ba95b2eb86b
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
