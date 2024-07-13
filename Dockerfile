@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.8.0
-ARG SYFT_SHA=b487ee715e715e960f0d327b49ed9f5926b82bfa2f7283942f9631c41e7c0545
+ARG SYFT_VERSION=v1.9.0
+ARG SYFT_SHA=4c7db3f86a7cd86997fc37da412ac4c6031bb8d0a319a0b152791e53cd240ac4
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.15.1
-ARG BUILDX_SHA=8d486f0088b7407a90ad675525ba4a17d0a537741b9b33fe3391a88cafa2dd0b
+ARG BUILDX_VERSION=v0.16.0
+ARG BUILDX_SHA=9a9a6ca0b929a57db01020fb226b1a2ea2bc57eba63d4adec46c43d0009506e2
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
