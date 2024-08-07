@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-ARG COSIGN_VERSION=v2.3.0
-ARG COSIGN_SHA=5985b6ebbda2dd5aec4bd8c49e084393147d19170e7f7f4c30e664939e6972bf
+ARG COSIGN_VERSION=v2.4.0
+ARG COSIGN_SHA=cd7636b3586a3bdac2d9c8f3b421ed119edcb20499107887fd929211110e8418
 RUN \ 
 	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
 	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.22.5
-ARG GOLANG_DIST_SHA=904b924d435eaea086515bc63235b192ea441bd8c9b198c507e85009e6e4c7f0
+ARG GO_VERSION=go1.22.6
+ARG GOLANG_DIST_SHA=999805bed7d9039ec3da1a53bfbcafc13e367da52aa823cb60b68ba22d44c616
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
