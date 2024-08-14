@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.22.6
-ARG GOLANG_DIST_SHA=999805bed7d9039ec3da1a53bfbcafc13e367da52aa823cb60b68ba22d44c616
+ARG GO_VERSION=go1.23.0
+ARG GOLANG_DIST_SHA=905a297f19ead44780548933e0ff1a1b86e8327bb459e92f9c0012569f76f5e3
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
