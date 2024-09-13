@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.2.0
-ARG GORELEASER_SHA=1bf8909fa556599f29045b0b015ee75f6aec789e92f17343cb136e45499da98a
+ARG GORELEASER_VERSION=v2.3.0
+ARG GORELEASER_SHA=247ab7ea88c66d12a7ae43d4aecdd566614e3724a66c8d7e1ae311103ce5a588
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.17.0
-ARG BUILDX_SHA=6c65b3a80fd65312ed4949b76d10077c304ea013e78251a91cb0990562ee82a6
+ARG BUILDX_VERSION=v0.17.1
+ARG BUILDX_SHA=aa7a9778349e1a8ace685e4c51a1d33e7a9b0aa6925d1c625b09cb3800eba696
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
