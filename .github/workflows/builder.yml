@@ -5,10 +5,10 @@ on:
     inputs:
       builder-tag:
         description: golang cross builder tag name
-        default: v1.22.7-0
+        default: v1.22.8-0
       golang-version:
         description: golang version
-        default: "1.22.7"
+        default: "1.22.8"
       osxcross-git-hash:
         description: git commit hash of osx-cross project
         default: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
