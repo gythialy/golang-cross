@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-ARG COSIGN_VERSION=v2.4.0
-ARG COSIGN_SHA=cd7636b3586a3bdac2d9c8f3b421ed119edcb20499107887fd929211110e8418
+ARG COSIGN_VERSION=v2.4.1
+ARG COSIGN_SHA=8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b
 RUN \
 	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
 	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
