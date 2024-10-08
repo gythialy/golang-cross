@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.13.0
-ARG SYFT_SHA=4a664f0b6de1bb3cfebebcf8baea7560d3f4b7424130f1cc2075de746a3cc039
+ARG SYFT_VERSION=v1.14.0
+ARG SYFT_SHA=21653debfeccb278576ffdd85b5dbe8cd44fcb820cae71e887a6ac2efb399d37
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
