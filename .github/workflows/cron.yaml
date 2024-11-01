@@ -2,8 +2,8 @@ name: Update depdencies
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "13 16 * * *"
+  # schedule:
+  #   - cron: "13 16 * * *"
 
 jobs:
   check-update:
