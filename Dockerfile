@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.23.2-0-${OS_CODENAME:-bookworm}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.23.3-0-${OS_CODENAME:-bookworm}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.15.0
-ARG SYFT_SHA=bd7215c3e0bfaec1139c3c46908b65ae01bc8d745723a3ce42b9659c2b62e428
+ARG SYFT_VERSION=v1.16.0
+ARG SYFT_SHA=38bf84931e898d4d01c39fc806f89ae3eebac56313978dacd96156f1f9f85bc7
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.23.2
-ARG GOLANG_DIST_SHA=542d3c1705f1c6a1c5a80d5dc62e2e45171af291e755d591c5e6531ef63b454e
+ARG GO_VERSION=go1.23.3
+ARG GOLANG_DIST_SHA=a0afb9744c00648bafb1b90b4aba5bdb86f424f02f9275399ce0c20b93a2c3a8
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.3.2
-ARG GORELEASER_SHA=cc0720052c44d4dd7d2483f5b769a92dcf5805ff6feaba68dc6be9e9450aa39a
+ARG GORELEASER_VERSION=v2.4.4
+ARG GORELEASER_SHA=be4c47a22a020eeda3640a88a6e2e02cb565f469180347d89e193659dd84c15e
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
