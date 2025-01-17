@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.23.4-0-${OS_CODENAME:-bookworm}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.23.5-0-${OS_CODENAME:-bookworm}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.17.0
-ARG SYFT_SHA=3485e831c21fd80b41fa3fc1f72e10367989b2d1aee082d642b5b0e658a02b44
+ARG SYFT_VERSION=v1.18.1
+ARG SYFT_SHA=066c251652221e4d44fcc4d115ce3df33a91769da38c830a8533199db2f65aab
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.23.4
-ARG GOLANG_DIST_SHA=6924efde5de86fe277676e929dc9917d466efa02fb934197bc2eba35d5680971
+ARG GO_VERSION=go1.23.5
+ARG GOLANG_DIST_SHA=cbcad4a6482107c7c7926df1608106c189417163428200ce357695cc7e01d091
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.4.8
-ARG GORELEASER_SHA=a115c78edc90d0eb5d36272c54a8087c0b209644349f3e720e2ec53d48d77647
+ARG GORELEASER_VERSION=v2.5.1
+ARG GORELEASER_SHA=dfdbde64f57a7667bdcf5906c5df8ceaf19fb3175c1b352534ed22ca78b7a4c7
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.19.1
-ARG BUILDX_SHA=153eace3d30c9efe9a7b94ea06c9d15ace59c8e6268d3481b8c175bd3df020f9
+ARG BUILDX_VERSION=v0.19.3
+ARG BUILDX_SHA=32ed111e941e385c2fb8261eba06a4056915718fd606f8278834ac1931d261a2
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
@@ -106,8 +106,8 @@ RUN \
 	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=v0.36.0
-ARG PACK_SHA=42324ccbf29a6c6a64533ffe547fb1bbc0b73d741c6b2b7bee5cb9ed2bbf40b2
+ARG PACK_VERSION=v0.36.3
+ARG PACK_SHA=29529dbd4c4b7575f246c0efc1a64af2c441b069616788372e35f890a111fe03
 RUN \
 	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
 	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
