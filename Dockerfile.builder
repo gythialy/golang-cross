@@ -1,11 +1,11 @@
 # golang parameters
-ARG GO_VERSION=1.22.10
+ARG GO_VERSION=1.22.12
 ARG OS_CODENAME=bookworm
 ARG OSK_SDK=macos-13
 
 FROM ghcr.io/gythialy/osx-sdk:${OSK_SDK:-macos-13} AS osx-sdk
 
-FROM golang:${GO_VERSION:-1.22.10}-${OS_CODENAME:-bookworm} AS base
+FROM golang:${GO_VERSION:-1.22.12}-${OS_CODENAME:-bookworm} AS base
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.13
