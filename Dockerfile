@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.23.6-0-${OS_CODENAME:-bookworm}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.24.0-0-${OS_CODENAME:-bookworm}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-ARG COSIGN_VERSION=v2.4.2
-ARG COSIGN_SHA=e7f5bd99a790703333e8f8e8e6c91d5e646f3d7041e4cf935b56587de20cec3f
+ARG COSIGN_VERSION=v2.4.3
+ARG COSIGN_SHA=caaad125acef1cb81d58dcdc454a1e429d09a750d1e9e2b3ed1aed8964454708
 RUN \
 	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
 	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.23.6
-ARG GOLANG_DIST_SHA=9379441ea310de000f33a4dc767bd966e72ab2826270e038e78b2c53c2e7802d
+ARG GO_VERSION=go1.24.0
+ARG GOLANG_DIST_SHA=dea9ca38a0b852a74e81c26134671af7c0fbe65d81b0dc1c5bfe22cf7d4c8858
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
