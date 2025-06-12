@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.23.6-0-${OS_CODENAME:-bookworm}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.23.10-0-${OS_CODENAME:-bookworm}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-ARG COSIGN_VERSION=v2.4.3
-ARG COSIGN_SHA=caaad125acef1cb81d58dcdc454a1e429d09a750d1e9e2b3ed1aed8964454708
+ARG COSIGN_VERSION=v2.5.0
+ARG COSIGN_SHA=1f6c194dd0891eb345b436bb71ff9f996768355f5e0ce02dde88567029ac2188
 RUN \
 	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
 	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.19.0
-ARG SYFT_SHA=1dec148ea36aef68a866e35528974b5dbc106ba0b545f1a262ad977d48294637
+ARG SYFT_VERSION=v1.23.1
+ARG SYFT_SHA=42f3e01b64f054d0caee42073cb94e3ac3e61be6f0100e7ecda96e6a2abf7e22
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.23.7
-ARG GOLANG_DIST_SHA=4741525e69841f2e22f9992af25df0c1112b07501f61f741c12c6389fcb119f3
+ARG GO_VERSION=go1.23.10
+ARG GOLANG_DIST_SHA=535f9f81802499f2a7dbfa70abb8fda3793725fcc29460f719815f6e10b5fd60
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.6.1
-ARG GORELEASER_SHA=517bc6422ed3fc4ae12900216cdab047dbb1dc60610174a170f7b760f171e27f
+ARG GORELEASER_VERSION=v2.9.0
+ARG GORELEASER_SHA=a066fcd713684abed0d750d7559f1a5d794fa2faa8e8f1ad2eecec8c373668a7
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -58,8 +58,8 @@ RUN  \
 	goreleaser -v
 
 # install ko
-ARG KO_VERSION=v0.17.1
-ARG KO_SHA=4f0b979b59880b3232f47d79c940f2279165aaad15a11d7614e8a2c9e5c78c29
+ARG KO_VERSION=v0.18.0
+ARG KO_SHA=ce8c8776b243357e0a822c279b06c34302460221e834765dee5f4e9e2c0b7b38
 RUN  \
 	KO_DOWNLOAD_FILE=ko_${KO_VERSION#v}_Linux_x86_64.tar.gz && \
 	KO_DOWNLOAD_URL=https://github.com/ko-build/ko/releases/download/${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
