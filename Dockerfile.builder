@@ -20,14 +20,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Install deps
 RUN set -x; echo "Starting image build for Debian    " \
   && dpkg --add-architecture arm64                     \
-  && dpkg --add-architecture armel                     \
   && dpkg --add-architecture armhf                     \
   && dpkg --add-architecture i386                      \
-  && dpkg --add-architecture mips                      \
-  && dpkg --add-architecture mipsel                    \
-  && dpkg --add-architecture powerpc                   \
-  && dpkg --add-architecture ppc64el                   \
-  && dpkg --add-architecture s390x                     \
   && apt-get update                                    \
   && apt-get install -y -q                             \
   autoconf                                       \
@@ -40,11 +34,7 @@ RUN set -x; echo "Starting image build for Debian    " \
   build-essential                                \
   # clang                                          \
   crossbuild-essential-arm64                     \
-  crossbuild-essential-armel                     \
   crossbuild-essential-armhf                     \
-  crossbuild-essential-mipsel                    \
-  crossbuild-essential-ppc64el                   \
-  crossbuild-essential-s390x                     \
   curl                                           \
   devscripts                                     \
   gdb                                            \
@@ -72,9 +62,6 @@ RUN set -x; echo "Starting image build for Debian    " \
   && apt -y autoremove                           \
   && apt-get clean                               \
   && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# FIXME: install gcc-multilib
-# FIXME: add mips and powerpc architectures
 
 ENV PATH=/usr/local/bin:${OSX_CROSS_PATH}/target/bin:$PATH
 
