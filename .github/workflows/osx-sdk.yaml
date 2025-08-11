@@ -35,9 +35,9 @@ jobs:
             }
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout osxcross
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: "tpoechtrager/osxcross"
           ref: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"

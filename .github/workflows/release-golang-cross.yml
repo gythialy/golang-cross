@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sigstore/cosign-installer@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
