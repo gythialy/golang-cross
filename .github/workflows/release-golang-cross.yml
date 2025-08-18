@@ -9,7 +9,7 @@ jobs:
   release:
     strategy:
       matrix:
-        codename: [bullseye, bookworm]
+        codename: [bookworm, trixie]
     permissions:
       id-token: write
       packages: write

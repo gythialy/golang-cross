@@ -5,10 +5,10 @@ on:
     inputs:
       builder-tag:
         description: golang cross builder tag name
-        default: v1.24.6-0
+        default: v1.25.0-0
       golang-version:
         description: golang version
-        default: "1.24.6"
+        default: "1.25.0"
       osxcross-git-hash:
         description: git commit hash of osx-cross project
         default: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
@@ -19,7 +19,7 @@ jobs:
   build:
     strategy:
       matrix:
-        codename: [bullseye, bookworm]
+        codename: [bookworm, trixie]
     runs-on: ubuntu-latest
     continue-on-error: false
     permissions:
