@@ -11,7 +11,7 @@ on:
         default: "1.25.0"
       osxcross-git-hash:
         description: git commit hash of osx-cross project
-        default: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
+        default: "f873f534c6cdb0776e457af8c7513da1e02abe59"
       osx-min-version:
         description: minimal macOS SDK deployment target
         default: "10.13"
@@ -44,7 +44,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
           tags: |
-            type=raw,value=latest,enable=${{ matrix.codename == 'bookworm' && github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=latest,enable=${{ matrix.codename == 'trixie' && github.ref == format('refs/heads/{0}', 'main') }}
             type=raw,value=${{ env.GOLANG_CROSS_TAG }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3

@@ -7,9 +7,12 @@ FROM ghcr.io/gythialy/osx-sdk:${OSK_SDK:-macos-13} AS osx-sdk
 
 FROM golang:${GO_VERSION:-1.25.0}-${OS_CODENAME:-trixie} AS base
 
+# Re-declare ARG after FROM to make it available in this stage
+ARG OS_CODENAME=trixie
+
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.13
-ARG OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
+ARG OSX_CROSS_COMMIT=f873f534c6cdb0776e457af8c7513da1e02abe59
 # ARG APT_MIRROR
 # RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
 #   && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
@@ -23,6 +26,9 @@ RUN set -x; echo "Starting image build for Debian    " \
   && dpkg --add-architecture armhf                     \
   && dpkg --add-architecture i386                      \
   && apt-get update                                    \
+  && if [ "${OS_CODENAME}" != "trixie" ]; then \
+   apt-get install -y -q software-properties-common multistrap lzma-dev; \
+  fi \
   && apt-get install -y -q                             \
   autoconf                                       \
   automake                                       \
@@ -42,16 +48,16 @@ RUN set -x; echo "Starting image build for Debian    " \
   libtool                                        \
   llvm                                           \
   mercurial                                      \
-  multistrap                                     \
+  mmdebstrap                                     \
   patch                                          \
-  software-properties-common                     \
   subversion                                     \
   wget                                           \
   xz-utils                                       \
   # cmake                                          \
   qemu-user-static                               \
   libxml2-dev                                    \
-  lzma-dev                                       \
+  liblzma-dev                                    \
+  zlib1g-dev                                     \
   openssl                                        \
   mingw-w64                                      \
   musl-tools                                     \
@@ -70,13 +76,13 @@ WORKDIR "${OSX_CROSS_PATH}"
 # install osxcross:
 RUN \
   git clone https://github.com/tpoechtrager/osxcross.git . \
-  && git checkout -q "${OSX_CROSS_COMMIT:-ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b}"
+  && git checkout -q "${OSX_CROSS_COMMIT:-f873f534c6cdb0776e457af8c7513da1e02abe59}"
 
 # install osx sdk
 COPY --from=osx-sdk "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
 
 # install cmake
-ARG CMAKE_VERSION=3.28.3
+ARG CMAKE_VERSION=4.1.0
 RUN \
   # wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz \
   # && tar -xf cmake-${CMAKE_VERSION}.tar.gz \
@@ -97,9 +103,15 @@ RUN  patch -p1 < osxcross-08-52-08.patch
 COPY scripts/llvm.sh "${OSX_CROSS_PATH}/"
 RUN \
   # install clang-16
-  ./llvm.sh 16 \
-  && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 \
-  && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100 \
+  if [ "${OS_CODENAME}" = "trixie" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends clang-18 && \
+    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 && \
+    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100; \
+  else \
+    ./llvm.sh 16 && \
+    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 && \
+    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100; \
+  fi \
   && clang --version \
   && clang++ --version \
   && UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN:-10.13} ./build.sh \
