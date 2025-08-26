@@ -12,7 +12,7 @@ ARG OS_CODENAME=trixie
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.13
-ARG OSX_CROSS_COMMIT=f873f534c6cdb0776e457af8c7513da1e02abe59
+ARG OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
 # ARG APT_MIRROR
 # RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/apt/sources.list \
 #   && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
@@ -76,7 +76,7 @@ WORKDIR "${OSX_CROSS_PATH}"
 # install osxcross:
 RUN \
   git clone https://github.com/tpoechtrager/osxcross.git . \
-  && git checkout -q "${OSX_CROSS_COMMIT:-f873f534c6cdb0776e457af8c7513da1e02abe59}"
+  && git checkout -q "${OSX_CROSS_COMMIT:-ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b}"
 
 # install osx sdk
 COPY --from=osx-sdk "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
@@ -102,12 +102,13 @@ RUN  patch -p1 < osxcross-08-52-08.patch
 
 COPY scripts/llvm.sh "${OSX_CROSS_PATH}/"
 RUN \
-  # install clang-16
+  # install clang-18
   if [ "${OS_CODENAME}" = "trixie" ]; then \
     apt-get update && apt-get install -y --no-install-recommends clang-18 && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100; \
   else \
+  # install clang-16
     ./llvm.sh 16 && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100; \

@@ -11,7 +11,7 @@ on:
         default: "1.25.0"
       osxcross-git-hash:
         description: git commit hash of osx-cross project
-        default: "f873f534c6cdb0776e457af8c7513da1e02abe59"
+        default: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
       osx-min-version:
         description: minimal macOS SDK deployment target
         default: "10.13"
