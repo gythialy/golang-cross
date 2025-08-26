@@ -29,7 +29,7 @@ RUN set -x; echo "Starting image build for Debian    " \
   && if [ "${OS_CODENAME}" != "trixie" ]; then \
     apt-get install -y -q software-properties-common; \
   fi \
-  && apt-get install -y -q                       \
+  && apt-get install -y -q                             \
   autoconf                                       \
   automake                                       \
   autotools-dev                                  \
@@ -102,7 +102,11 @@ RUN  patch -p1 < osxcross-08-52-08.patch
 COPY scripts/llvm.sh "${OSX_CROSS_PATH}/"
 RUN \
   # install clang-16
-  ./llvm.sh 16 \
+  if [ "${OS_CODENAME}" = "trixie" ]; then \
+    apt-get update && apt-get install -y clang-16 clang++-16; \
+  else \
+    ./llvm.sh 16; \
+  fi \
   && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 \
   && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100 \
   && clang --version \
