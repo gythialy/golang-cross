@@ -27,7 +27,7 @@ RUN set -x; echo "Starting image build for Debian    " \
   && dpkg --add-architecture i386                      \
   && apt-get update                                    \
   && if [ "${OS_CODENAME}" != "trixie" ]; then \
-    apt-get install -y -q software-properties-common; \
+   apt-get install -y -q software-properties-common multistrap lzma-dev; \
   fi \
   && apt-get install -y -q                             \
   autoconf                                       \
@@ -103,12 +103,15 @@ COPY scripts/llvm.sh "${OSX_CROSS_PATH}/"
 RUN \
   # install clang-16
   if [ "${OS_CODENAME}" = "trixie" ]; then \
-    apt-get update && apt-get install -y clang-16 clang++-16; \
+    apt-get update && apt-get install -y clang clang++ && \
+    CLANG_VERSION=$(clang --version | grep -oP 'clang version \K[0-9]+' | head -1) && \
+    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${CLANG_VERSION} 100 && \
+    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 100; \
   else \
-    ./llvm.sh 16; \
+    ./llvm.sh 16 && \
+    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 && \
+    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100; \
   fi \
-  && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 \
-  && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100 \
   && clang --version \
   && clang++ --version \
   && UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN:-10.13} ./build.sh \
