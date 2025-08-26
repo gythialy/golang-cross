@@ -117,8 +117,9 @@ RUN \
 
 # install gcloud sdk
 RUN apt-get update && apt-get install -y -q apt-transport-https ca-certificates gnupg \
+	&& curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
 	&& echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
-	&& curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-cli -y \
+	&& apt-get update -y && apt-get install google-cloud-cli -y \
 	&& apt -y autoremove && apt-get clean
 
 # install goimports
