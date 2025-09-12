@@ -1,9 +1,9 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.25.0-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.25.1-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
-LABEL org.opencontainers.image.source https://github.com/gythialy/golang-cross
+LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
 
 COPY entrypoint.sh /
 
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.29.1
-ARG SYFT_SHA=ca704907e5a7b697c6e683832ca128e2ae60de63d7d87f3e2e39672df9038fa4
+ARG SYFT_VERSION=v1.32.0
+ARG SYFT_SHA=d6400b579fa84dd383573b1d1ff6f081a37fc64d3ffaafdfdda95c4325f204be
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.25.0
-ARG GOLANG_DIST_SHA=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613
+ARG GO_VERSION=go1.25.1
+ARG GOLANG_DIST_SHA=7716a0d940a0f6ae8e1f3b3f4f36299dc53e31b16840dbd171254312c41ca12e
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.11.2
-ARG GORELEASER_SHA=b101e5b3b286f82231fd0d6ad7c654cb99b5bd2ac15d5b7c0f090c94b026e777
+ARG GORELEASER_VERSION=v2.12.0
+ARG GORELEASER_SHA=0c8915d91a491b1349fe4288eb8541d3876c5187be7f7e614bfc3fe442cf06d1
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.26.1
-ARG BUILDX_SHA=9451034b6ca5354e8bf88a2002a413aedabf110fd0f12ebb0b2f2cc241be8e41
+ARG BUILDX_VERSION=v0.28.0
+ARG BUILDX_SHA=696bc104bac3bb708eff1af3f8bbc09fda0fd88f5757c1f9b404a35117889224
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \

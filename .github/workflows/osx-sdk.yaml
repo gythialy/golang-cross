@@ -7,7 +7,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-12, macos-13, macos-14]
+        os: [macos-14-large, macos-15-large]
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     permissions:
@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: "tpoechtrager/osxcross"
-          ref: "ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b"
+          ref: "f873f534c6cdb0776e457af8c7513da1e02abe59"
           path: "osxcross"
       - name: Build OSX SDK
         id: build_sdk_file
