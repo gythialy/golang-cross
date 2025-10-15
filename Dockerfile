@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.25.1-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.25.3-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-ARG COSIGN_VERSION=v2.5.3
-ARG COSIGN_SHA=783b5d6c74105401c63946c68d9b2a4e1aab3c8abce043e06b8510b02b623ec9
+ARG COSIGN_VERSION=v2.6.1
+ARG COSIGN_SHA=064954c5d8c7e3b28188eee5b1727b31c411550bc5fefd41aa672d3c761d103a
 RUN \
 	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
 	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.32.0
-ARG SYFT_SHA=d6400b579fa84dd383573b1d1ff6f081a37fc64d3ffaafdfdda95c4325f204be
+ARG SYFT_VERSION=v1.33.0
+ARG SYFT_SHA=adc1b944a827ed3432bcd9f1dbdbc8fa3c0dca7d3d449e7084c90248c2c6cb50
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.25.1
-ARG GOLANG_DIST_SHA=7716a0d940a0f6ae8e1f3b3f4f36299dc53e31b16840dbd171254312c41ca12e
+ARG GO_VERSION=go1.25.3
+ARG GOLANG_DIST_SHA=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
 # update golang
 RUN \
 	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.12.0
-ARG GORELEASER_SHA=0c8915d91a491b1349fe4288eb8541d3876c5187be7f7e614bfc3fe442cf06d1
+ARG GORELEASER_VERSION=v2.12.5
+ARG GORELEASER_SHA=7675261dbfb73bf80e3fcb6502373aecfde67a7431f7ee888fb86407afc9ca39
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
