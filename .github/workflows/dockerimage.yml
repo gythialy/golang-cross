@@ -8,31 +8,41 @@ on:
     branches:
       - main
 
-jobs:
+permissions: {}
 
+jobs:
   build:
     runs-on: ubuntu-latest
 
+    permissions:
+      packages: write
+      contents: read
+
     steps:
-    - uses: actions/checkout@v6
-    - name: Get Repo Owner
-      id: get_repo_owner
-      run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Login to GitHub Container Registry
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build and push
-      uses: docker/build-push-action@v6
-      with:
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-    - name: test example
-      run: cd example && make snapshot
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Get Repo Owner
+        id: get_repo_owner
+        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: test example
+        run: cd example && make snapshot

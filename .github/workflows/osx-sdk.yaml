@@ -3,26 +3,34 @@ name: Pack OSX SDK
 on:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   build:
     strategy:
       matrix:
-        os: [macos-14-large, macos-15-large]
+        os:
+          - macos-14-large
+          - macos-15-large
+
     runs-on: ${{ matrix.os }}
     continue-on-error: true
+
     permissions:
       id-token: write
       packages: write
       contents: read
+
     env:
       DOCKER_REGISTRY: "ghcr.io"
+
     steps:
       # - name: Setup Xcode
       #   uses: maxim-lobanov/setup-xcode@v1
       #   with:
       #     xcode-version: latest
       - name: Set up Docker
-        uses: crazy-max/ghaction-setup-docker@v4.6.0
+        uses: crazy-max/ghaction-setup-docker@e61617a16c407a86262fb923c35a616ddbe070b3 # v4.6.0
         env:
           SIGN_QEMU_BINARY: 1
           COLIMA_START_ARGS: --cpu 4 --memory 8 --disk 32
@@ -34,43 +42,50 @@ jobs:
               }
             }
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: actions/checkout@v6
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
       - name: Checkout osxcross
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: "tpoechtrager/osxcross"
           ref: "f873f534c6cdb0776e457af8c7513da1e02abe59"
           path: "osxcross"
+
       - name: Build OSX SDK
         id: build_sdk_file
+        shell: bash
         run: |
           ./osxcross/tools/gen_sdk_package.sh
           find . -type f -name "*.tar.xz" -print0 | xargs shasum -a 256 | tee sha256sum.txt
           sdk_file=$(find . -name "*.tar.xz" | head -n 1)
           [ -f "$sdk_file" ] && echo "sdk_file: $sdk_file"
-          echo "sdk_file=${sdk_file}" >> $GITHUB_OUTPUT
-        shell: bash
+          echo "sdk_file=${sdk_file}" >> "$GITHUB_OUTPUT"
+
       - name: Get Repo Owner
         id: get_repo_owner
-        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/osx-sdk
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ matrix.os }}
+
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ${{ env.DOCKER_REGISTRY}}
           username: ${{ steps.get_repo_owner.outputs.repo_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         id: buildpush
         with:
           context: .
