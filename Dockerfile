@@ -33,7 +33,7 @@ ARG GO_VERSION=go1.25.4
 ARG GOLANG_DIST_SHA=9fa5ffeda4170de60f67f3aa0f824e426421ba724c21e133c1e35d6159ca1bec
 # update golang
 RUN \
-	GOLANG_DIST=https://storage.googleapis.com/golang/${GO_VERSION}.linux-amd64.tar.gz && \
+	GOLANG_DIST=https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz && \
 	wget -O go.tgz "$GOLANG_DIST" && \
 	echo "${GOLANG_DIST_SHA} *go.tgz" | sha256sum -c - && \
 	rm -rf /usr/local/go && \
