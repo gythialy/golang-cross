@@ -116,7 +116,7 @@ RUN \
   && clang --version \
   && clang++ --version \
   && UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN:-10.13} ./build.sh \
-  && DISABLE_PARALLEL_ARCH_BUILD=1 ./build_compiler_rt.sh \
+  && ./build_compiler_rt.sh \
   && rm -rf *~ build *.tar.xz \
   && rm -rf ./.git \
   && ls -al "${OSX_CROSS_PATH}/target/bin" \
