@@ -101,22 +101,25 @@ COPY patch/osxcross-08-52-08.patch "${OSX_CROSS_PATH}/"
 RUN  patch -p1 < osxcross-08-52-08.patch
 
 COPY scripts/llvm.sh "${OSX_CROSS_PATH}/"
+
 RUN \
   # install clang-18
   if [ "${OS_CODENAME}" = "trixie" ]; then \
     apt-get update && apt-get install -y --no-install-recommends clang-18 && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100; \
+    sed -i 's/BRANCH=main/BRANCH=release\/18.x/g' build_compiler_rt.sh; \
   else \
   # install clang-16
     ./llvm.sh 16 && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100; \
+    sed -i 's/BRANCH=main/BRANCH=release\/16.x/g' build_compiler_rt.sh; \
   fi \
   && clang --version \
   && clang++ --version \
   && UNATTENDED=yes OSX_VERSION_MIN=${OSX_VERSION_MIN:-10.13} ./build.sh \
-  && ./build_compiler_rt.sh \
+  && DISABLE_PARALLEL_ARCH_BUILD=1 ./build_compiler_rt.sh \
   && rm -rf *~ build *.tar.xz \
   && rm -rf ./.git \
   && ls -al "${OSX_CROSS_PATH}/target/bin" \
