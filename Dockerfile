@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.25.6-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.25.7-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.40.1
-ARG SYFT_SHA=c229137c919f22aa926c1c015388db5ec64e99c078e0baac053808e8f36e2e00
+ARG SYFT_VERSION=v1.41.2
+ARG SYFT_SHA=7e0f45251d2a3998d29dfb6575bc662575dd5864c27bdc11625cc369760a17ad
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.25.6
-ARG GOLANG_DIST_SHA=f022b6aad78e362bcba9b0b94d09ad58c5a70c6ba3b7582905fababf5fe0181a
+ARG GO_VERSION=go1.25.7
+ARG GOLANG_DIST_SHA=12e6d6a191091ae27dc31f6efc630e3a3b8ba409baf3573d955b196fdf086005
 # update golang
 RUN \
 	GOLANG_DIST=https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.28.0
-ARG BUILDX_SHA=696bc104bac3bb708eff1af3f8bbc09fda0fd88f5757c1f9b404a35117889224
+ARG BUILDX_VERSION=v0.31.1
+ARG BUILDX_SHA=dc8eaffbf29138123b4874d852522b12303c61246a5073fa0f025e4220317b1e
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
@@ -106,8 +106,8 @@ RUN \
 	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=v0.38.2
-ARG PACK_SHA=a00765572b7d464b1691d64fd264d9a807b066a7e7805db32b9918d9be16e228
+ARG PACK_VERSION=v0.40.0
+ARG PACK_SHA=1f57cd0bd52e5c80cba52e30440b41fc183a13a9c1f2ed8b13cc35c12fa10126
 RUN \
 	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
 	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
