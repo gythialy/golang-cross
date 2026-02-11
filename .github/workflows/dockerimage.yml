@@ -37,7 +37,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@ee4ca427a2f43b6a16632044ca514c076267da23 # v6.19.0
         with:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:latest
