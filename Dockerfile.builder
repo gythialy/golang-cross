@@ -1,11 +1,11 @@
 # golang parameters
-ARG GO_VERSION=1.25.7
+ARG GO_VERSION=1.26.0
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
 
 FROM ghcr.io/gythialy/osx-sdk:${OSK_SDK:-macos-13} AS osx-sdk
 
-FROM golang:${GO_VERSION:-1.25.7}-${OS_CODENAME:-trixie} AS base
+FROM golang:${GO_VERSION:-1.26.0}-${OS_CODENAME:-trixie} AS base
 
 # Re-declare ARG after FROM to make it available in this stage
 ARG OS_CODENAME=trixie
