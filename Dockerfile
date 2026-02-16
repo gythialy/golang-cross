@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.25.7-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.26.0-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.41.2
-ARG SYFT_SHA=7e0f45251d2a3998d29dfb6575bc662575dd5864c27bdc11625cc369760a17ad
+ARG SYFT_VERSION=v1.42.0
+ARG SYFT_SHA=23bec7de5db0ba05590c676a338a8cd49e635df63e6c404c34d437e2c57f1a77
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.25.7
-ARG GOLANG_DIST_SHA=12e6d6a191091ae27dc31f6efc630e3a3b8ba409baf3573d955b196fdf086005
+ARG GO_VERSION=go1.26.0
+ARG GOLANG_DIST_SHA=aac1b08a0fb0c4e0a7c1555beb7b59180b05dfc5a3d62e40e9de90cd42f88235
 # update golang
 RUN \
 	GOLANG_DIST=https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz && \
