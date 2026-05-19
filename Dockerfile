@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.26.0-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.26.3-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install cosign
-ARG COSIGN_VERSION=v3.0.4
-ARG COSIGN_SHA=10dab2fd2170b5aa0d5c0673a9a2793304960220b314f6a873bf39c2f08287aa
+ARG COSIGN_VERSION=v3.0.6
+ARG COSIGN_SHA=c956e5dfcac53d52bcf058360d579472f0c1d2d9b69f55209e256fe7783f4c74
 RUN \
 	COSIGN_DOWNLOAD_FILE=cosign-linux-amd64 && \
 	wget -O $COSIGN_DOWNLOAD_FILE https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${COSIGN_DOWNLOAD_FILE} && \
@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.42.0
-ARG SYFT_SHA=23bec7de5db0ba05590c676a338a8cd49e635df63e6c404c34d437e2c57f1a77
+ARG SYFT_VERSION=v1.44.0
+ARG SYFT_SHA=0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -29,8 +29,8 @@ RUN  \
 	tar -xzf $SYFT_DOWNLOAD_FILE -C /usr/bin/ syft && \
 	rm $SYFT_DOWNLOAD_FILE
 
-ARG GO_VERSION=go1.26.0
-ARG GOLANG_DIST_SHA=aac1b08a0fb0c4e0a7c1555beb7b59180b05dfc5a3d62e40e9de90cd42f88235
+ARG GO_VERSION=go1.26.3
+ARG GOLANG_DIST_SHA=2b2cfc7148493da5e73981bffbf3353af381d5f93e789c82c79aff64962eb556
 # update golang
 RUN \
 	GOLANG_DIST=https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.13.3
-ARG GORELEASER_SHA=4b66f2f78f78561330350651ade557b70328664718490f37834749073af21d20
+ARG GORELEASER_VERSION=v2.15.4
+ARG GORELEASER_SHA=aae00c71a4a6d55e08cce9273a1516bdce33c1e07cffb7e502fa6fec4377dede
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -84,7 +84,7 @@ RUN \
 
 # install Docker CLI
 # docker no longer provides checksum
-ARG DOCKER_CLI_VERSION=24.0.7
+ARG DOCKER_CLI_VERSION=29.5.1
 # ARG DOCKER_CLI_SHA=7ea11ecb100fdc085dbfd9ab1ff380e7f99733c890ed815510a5952e5d6dd7e0
 RUN  \
 	DOCKER_CLI_DOWNLOAD_FILE=docker-${DOCKER_CLI_VERSION}.tgz && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.31.1
-ARG BUILDX_SHA=dc8eaffbf29138123b4874d852522b12303c61246a5073fa0f025e4220317b1e
+ARG BUILDX_VERSION=v0.34.0
+ARG BUILDX_SHA=0144479d5a1cd710be3464ae898628cfa68033e16b225aef52f81930c45ac9b5
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
@@ -106,8 +106,8 @@ RUN \
 	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=v0.40.0
-ARG PACK_SHA=1f57cd0bd52e5c80cba52e30440b41fc183a13a9c1f2ed8b13cc35c12fa10126
+ARG PACK_VERSION=v0.40.6
+ARG PACK_SHA=49fb874f7a930653834e67c16917369f9438080440194a6418421b1711421028
 RUN \
 	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
 	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
