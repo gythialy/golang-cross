@@ -1,0 +1,190 @@
+name: 🤖 Auto Release on Go Update
+
+on:
+  schedule:
+    # Daily check at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  detect-and-update:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    outputs:
+      go_version: ${{ steps.parse.outputs.go_version }}
+      builder_tag: ${{ steps.parse.outputs.builder_tag }}
+      tag: ${{ steps.parse.outputs.tag }}
+      skip: ${{ steps.parse.outputs.skip }}
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-tags: true
+
+      - name: Run check-update.sh
+        run: bash scripts/check-update.sh
+
+      - name: Parse new Go version
+        id: parse
+        run: |
+          if git diff --quiet -- Dockerfile; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No changes detected — Go version is current"
+            exit 0
+          fi
+
+          GO_VER=$(grep '^ARG GO_VERSION=' Dockerfile | sed 's/ARG GO_VERSION=go//')
+          echo "go_version=${GO_VER}" >> "$GITHUB_OUTPUT"
+          echo "builder_tag=v${GO_VER}-0" >> "$GITHUB_OUTPUT"
+          echo "tag=v${GO_VER}" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "New Go version: ${GO_VER}"
+
+      - name: Sync Dockerfile.builder and FROM tag
+        if: steps.parse.outputs.skip == 'false'
+        run: |
+          GO_VER="${{ steps.parse.outputs.go_version }}"
+
+          # Sync GO_VERSION in Dockerfile.builder
+          CURRENT_BUILDER_GO=$(grep '^ARG GO_VERSION=' Dockerfile.builder | sed 's/ARG GO_VERSION=//')
+          if [ "$CURRENT_BUILDER_GO" != "$GO_VER" ]; then
+            sed -i "s/^ARG GO_VERSION=${CURRENT_BUILDER_GO}/ARG GO_VERSION=${GO_VER}/" Dockerfile.builder
+          fi
+
+          # Sync the FROM tag in Dockerfile (builder image reference)
+          sed -i "s|\(golang-cross-builder:\)v[0-9.]\+-0|\1v${GO_VER}-0|" Dockerfile
+
+      - name: Commit and push to main
+        if: steps.parse.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Dockerfile Dockerfile.builder
+          git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
+          git push
+
+  build-builder:
+    needs: detect-and-update
+    if: needs.detect-and-update.outputs.skip == 'false'
+
+    strategy:
+      matrix:
+        codename: [bookworm, trixie]
+
+    runs-on: ubuntu-latest
+    continue-on-error: false
+
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+
+    env:
+      GOLANG_CROSS_TAG: ${{ needs.detect-and-update.outputs.builder_tag }}-${{ matrix.codename }}
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          ref: main
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Get Repo Owner
+        id: get_repo_owner
+        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        with:
+          images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
+          tags: |
+            type=raw,value=${{ env.GOLANG_CROSS_TAG }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        id: buildpush
+        with:
+          context: .
+          file: Dockerfile.builder
+          push: true
+          build-args: |
+            GO_VERSION=${{ needs.detect-and-update.outputs.go_version }}
+            OSX_VERSION_MIN=10.13
+            OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
+            OS_CODENAME=${{ matrix.codename }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sign the images
+        run: |
+          echo "sign ${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
+          cosign sign --yes "ghcr.io/${STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER}/golang-cross-builder@${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
+        shell: bash
+        env:
+          STEPS_BUILDPUSH_OUTPUTS_DIGEST: ${{ steps.buildpush.outputs.digest }}
+          STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+
+  create-release:
+    needs: [detect-and-update, build-builder]
+    if: always() && needs.detect-and-update.result == 'success' && needs.build-builder.result == 'success'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-tags: true
+
+      - name: Create and push both tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Main release tag e.g. v1.26.4
+          MAIN_TAG="${{ needs.detect-and-update.outputs.tag }}"
+          # Builder tag e.g. v1.26.4-0
+          BUILDER_TAG="${{ needs.detect-and-update.outputs.builder_tag }}"
+
+          git tag "$BUILDER_TAG"
+          git tag "$MAIN_TAG"
+          git push origin "$BUILDER_TAG" "$MAIN_TAG"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: ${{ needs.detect-and-update.outputs.tag }}
+          name: "golang-cross ${{ needs.detect-and-update.outputs.go_version }}"
+          body: |
+            ## What's Changed
+
+            Bump Go to **${{ needs.detect-and-update.outputs.go_version }}** and update tool dependencies.
+
+            ### Builder images
+            - `ghcr.io/gythialy/golang-cross-builder:v${{ needs.detect-and-update.outputs.go_version }}-0-bookworm`
+            - `ghcr.io/gythialy/golang-cross-builder:v${{ needs.detect-and-update.outputs.go_version }}-0-trixie`
+
+            The main `golang-cross` Docker image is being built automatically by [release-golang-cross.yml](https://github.com/${{ github.repository }}/actions/workflows/release-golang-cross.yml).
+          target_commitish: main
+          token: ${{ secrets.GITHUB_TOKEN }}
