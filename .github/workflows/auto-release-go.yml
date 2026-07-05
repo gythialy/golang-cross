@@ -169,41 +169,35 @@ jobs:
           GO_VER="${{ needs.detect-and-update.outputs.go_version }}"
           BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
 
+          # Write PR body to temp file to avoid YAML multi-line string issues
+          cat > /tmp/pr-body.md <<- EOF
+          ## What's Changed
+
+          Bump Go to **${GO_VER}** and update tool dependencies.
+
+          ### Builder images
+          - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`
+          - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`
+
+          ### How to release
+          1. Review and merge this PR
+          2. Create a GitHub Release with tag \`v${GO_VER}\`
+          3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image
+          EOF
+
           # Check if PR already exists for this branch
           EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #${EXISTING_PR} already exists for branch ${BRANCH}, updating body and assignees"
             gh pr edit "$EXISTING_PR" \
               --title "🤖 bump go to ${GO_VER} and tools" \
-              --body "## What's Changed
-
-Bump Go to **${GO_VER}** and update tool dependencies.
-
-### Builder images
-- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`
-- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`
-
-### How to release
-1. Review and merge this PR
-2. Create a GitHub Release with tag \`v${GO_VER}\`
-3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image" \
+              --body-file /tmp/pr-body.md \
               --add-assignee gythialy
           else
             gh pr create \
               --base main \
               --head "$BRANCH" \
               --title "🤖 bump go to ${GO_VER} and tools" \
-              --body "## What's Changed
-
-Bump Go to **${GO_VER}** and update tool dependencies.
-
-### Builder images
-- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`
-- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`
-
-### How to release
-1. Review and merge this PR
-2. Create a GitHub Release with tag \`v${GO_VER}\`
-3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image" \
+              --body-file /tmp/pr-body.md \
               --assignee gythialy
           fi
