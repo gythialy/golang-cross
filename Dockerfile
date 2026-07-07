@@ -19,8 +19,8 @@ RUN \
 	cosign version
 
 # install syft
-ARG SYFT_VERSION=v1.44.0
-ARG SYFT_SHA=0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a
+ARG SYFT_VERSION=v1.46.0
+ARG SYFT_SHA=d654f678b709eb53c393d38519d5ed7d2e57205529404018614cfefa0fb2b5ca
 RUN  \
 	SYFT_DOWNLOAD_FILE=syft_${SYFT_VERSION#v}_linux_amd64.tar.gz && \
 	SYFT_DOWNLOAD_URL=https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/${SYFT_DOWNLOAD_FILE} && \
@@ -42,8 +42,8 @@ RUN \
 	go version
 
 # install goreleaser
-ARG GORELEASER_VERSION=v2.16.0
-ARG GORELEASER_SHA=eaae05b5eba07533bd0f06846b68c808399504784df00c62eb219541fc04e5e2
+ARG GORELEASER_VERSION=v2.17.0
+ARG GORELEASER_SHA=dde10e2d5a13cef969c0eec00c74f359c0ac306d702b1bd291ad9337b4e54c1d
 # RUN \
 # 		wget https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.pem && \
 # 		cosign verify-blob --certificate checksums.txt.pem --signature https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt.sig https://github.com/goreleaser/goreleaser/releases/download/$GORELEASER_VERSION/checksums.txt && \
@@ -58,8 +58,8 @@ RUN  \
 	goreleaser -v
 
 # install ko
-ARG KO_VERSION=v0.18.1
-ARG KO_SHA=048ab11818089a43b7b74bc554494a79a3fd0d9822c061142e5cd3cf8b30cb27
+ARG KO_VERSION=v0.19.1
+ARG KO_SHA=635ac6ea3fd376c935fee597fbb29ab2c2449f49ef1655085fe3aa9c25fed7a5
 RUN  \
 	KO_DOWNLOAD_FILE=ko_${KO_VERSION#v}_Linux_x86_64.tar.gz && \
 	KO_DOWNLOAD_URL=https://github.com/ko-build/ko/releases/download/${KO_VERSION}/${KO_DOWNLOAD_FILE} && \
@@ -95,8 +95,8 @@ RUN  \
 	docker -v
 
 # install Buildx
-ARG BUILDX_VERSION=v0.34.0
-ARG BUILDX_SHA=0144479d5a1cd710be3464ae898628cfa68033e16b225aef52f81930c45ac9b5
+ARG BUILDX_VERSION=v0.35.0
+ARG BUILDX_SHA=d41ece72044243b4f58b343441ae37446d9c29a7d6b5e11c61847bbcf8f7dfda
 RUN \
 	BUILDX_DOWNLOAD_FILE=buildx-${BUILDX_VERSION}.linux-amd64 && \
 	wget https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64 && \
@@ -106,8 +106,8 @@ RUN \
 	mv buildx-${BUILDX_VERSION}.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
 # install Pack CLI
-ARG PACK_VERSION=v0.40.6
-ARG PACK_SHA=49fb874f7a930653834e67c16917369f9438080440194a6418421b1711421028
+ARG PACK_VERSION=v0.40.7
+ARG PACK_SHA=0e458f37e177b6764f3ddcec542bd77bf18cd6f64f00525e0a4589bd7895d747
 RUN \
 	PACK_DOWNLOAD_FILE=pack-${PACK_VERSION}-linux.tgz && \
 	wget https://github.com/buildpacks/pack/releases/download/${PACK_VERSION}/pack-${PACK_VERSION}-linux.tgz && \
