@@ -1,5 +1,5 @@
 # golang parameters
-ARG GO_VERSION=1.26.4
+ARG GO_VERSION=1.26.5
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
 
