@@ -27,24 +27,33 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      - name: Get current Go version
+        id: current
+        run: |
+          CURRENT_GO=$(git show HEAD:Dockerfile | grep '^ARG GO_VERSION=' | sed 's/ARG GO_VERSION=go//')
+          echo "version=${CURRENT_GO}" >> "$GITHUB_OUTPUT"
+          echo "Current Go version: ${CURRENT_GO}"
+
       - name: Run check-update.sh
         run: bash scripts/check-update.sh
 
-      - name: Parse new Go version
+      - name: Compare Go versions
         id: parse
         run: |
-          if git diff --quiet -- Dockerfile; then
+          CURRENT_GO="${{ steps.current.outputs.version }}"
+          NEW_GO=$(grep '^ARG GO_VERSION=' Dockerfile | sed 's/ARG GO_VERSION=go//')
+
+          if [ "$CURRENT_GO" = "$NEW_GO" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "No changes detected — Go version is current"
+            echo "Go version unchanged (${CURRENT_GO}) — no PR needed"
             exit 0
           fi
 
-          GO_VER=$(grep '^ARG GO_VERSION=' Dockerfile | sed 's/ARG GO_VERSION=go//')
-          echo "go_version=${GO_VER}" >> "$GITHUB_OUTPUT"
-          echo "builder_tag=v${GO_VER}-0" >> "$GITHUB_OUTPUT"
-          echo "branch_name=auto-release/go-${GO_VER}" >> "$GITHUB_OUTPUT"
+          echo "go_version=${NEW_GO}" >> "$GITHUB_OUTPUT"
+          echo "builder_tag=v${NEW_GO}-0" >> "$GITHUB_OUTPUT"
+          echo "branch_name=auto-release/go-${NEW_GO}" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
-          echo "New Go version: ${GO_VER}"
+          echo "New Go version: ${CURRENT_GO} → ${NEW_GO}"
 
       - name: Sync Dockerfile.builder and FROM tag
         if: steps.parse.outputs.skip == 'false'
