@@ -5,4 +5,7 @@ ENV OSX_CROSS_PATH=/osxcross
 
 WORKDIR "${OSX_CROSS_PATH}"
 
+# The final macOS SDK tar package, built by osxcross's tools/gen_sdk_package.sh
+# on the runner. Each image tag carries exactly one SDK tar (e.g. macos-14 ->
+# MacOSX14*.sdk.tar.xz) for other images to consume via COPY --from=osx-sdk.
 COPY "./${SDK_FILE}" "${OSX_CROSS_PATH}/tarballs/"
