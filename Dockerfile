@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.26.5-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.26.6-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -10,23 +10,23 @@ COPY entrypoint.sh /
 # ============================================================
 # Tool versions - managed by scripts/check-update.sh
 # ============================================================
-ARG COSIGN_VERSION=v3.1.1
-ARG COSIGN_SHA=ae1ecd212663f3693ad9edf8b1a183900c9a52d3155ba6e354237f9a0f6463fc
-ARG SYFT_VERSION=v1.46.0
-ARG SYFT_SHA=d654f678b709eb53c393d38519d5ed7d2e57205529404018614cfefa0fb2b5ca
-ARG GO_VERSION=go1.26.5
-ARG GOLANG_DIST_SHA=5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
-ARG GORELEASER_VERSION=v2.17.0
-ARG GORELEASER_SHA=dde10e2d5a13cef969c0eec00c74f359c0ac306d702b1bd291ad9337b4e54c1d
+ARG COSIGN_VERSION=v3.1.3
+ARG COSIGN_SHA=4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
+ARG SYFT_VERSION=v1.51.0
+ARG SYFT_SHA=2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
+ARG GO_VERSION=go1.26.6
+ARG GOLANG_DIST_SHA=708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89
+ARG GORELEASER_VERSION=v2.17.1
+ARG GORELEASER_SHA=a99bbc7ae0d8d897b07c4c497a9b62f222558804715ef219d1af05a7e417bc80
 ARG KO_VERSION=v0.19.1
 ARG KO_SHA=635ac6ea3fd376c935fee597fbb29ab2c2449f49ef1655085fe3aa9c25fed7a5
 ARG GIT_CHGLOG_VERSION=v0.15.4
 ARG GIT_CHGLOG_SHA=03cbeedbd1317289295e75016fa0acd26baeb2fc7810ed287361dd9bd8bc33a8
 ARG DOCKER_CLI_VERSION=29.5.1
-ARG BUILDX_VERSION=v0.35.0
-ARG BUILDX_SHA=d41ece72044243b4f58b343441ae37446d9c29a7d6b5e11c61847bbcf8f7dfda
-ARG PACK_VERSION=v0.40.7
-ARG PACK_SHA=0e458f37e177b6764f3ddcec542bd77bf18cd6f64f00525e0a4589bd7895d747
+ARG BUILDX_VERSION=v0.36.1
+ARG BUILDX_SHA=48af8a397ebd60178778bf63611dbcebe5f5e7a9be90eb9147b24b9587455778
+ARG PACK_VERSION=v0.40.9
+ARG PACK_SHA=dc0ee1e931cf8a106d7555a01a214864f9acb60b77adf15d69b74df4404758e9
 ARG GOIMPORTS_VERSION=v0.49.0
 
 # Download all tools in parallel (network-bound), verify checksums, then install.
