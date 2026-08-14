@@ -19,6 +19,7 @@ jobs:
       go_version: ${{ steps.parse.outputs.go_version }}
       builder_tag: ${{ steps.parse.outputs.builder_tag }}
       branch_name: ${{ steps.parse.outputs.branch_name }}
+      go_changed: ${{ steps.parse.outputs.go_changed }}
       skip: ${{ steps.parse.outputs.skip }}
 
     steps:
@@ -27,36 +28,44 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
-      - name: Get current Go version
-        id: current
-        run: |
-          CURRENT_GO=$(git show HEAD:Dockerfile | grep '^ARG GO_VERSION=' | sed 's/ARG GO_VERSION=go//')
-          echo "version=${CURRENT_GO}" >> "$GITHUB_OUTPUT"
-          echo "Current Go version: ${CURRENT_GO}"
-
       - name: Run check-update.sh
-        run: bash scripts/check-update.sh
+        id: check
+        run: |
+          bash scripts/check-update.sh | tee /tmp/check-update.log
+          # consume machine-readable versions block printed by the script
+          GO_VERSION=$(sed -n '/^##VERSIONS##$/,$p' /tmp/check-update.log | grep '^GO_VERSION=' | cut -d= -f2)
+          echo "go_version=${GO_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Detected Go version: ${GO_VERSION}"
 
-      - name: Compare Go versions
+      - name: Compare and prepare
         id: parse
         run: |
-          CURRENT_GO="${{ steps.current.outputs.version }}"
-          NEW_GO=$(grep '^ARG GO_VERSION=' Dockerfile | sed 's/ARG GO_VERSION=go//')
+          CURRENT_GO=$(git show HEAD:Dockerfile | sed -n 's/^ARG GO_VERSION=go//p')
+          NEW_GO="${{ steps.check.outputs.go_version }}"
+          NEW_GO=${NEW_GO#go}
 
-          if [ "$CURRENT_GO" = "$NEW_GO" ]; then
+          # no file changes means nothing to update
+          if git diff --quiet -- Dockerfile Dockerfile.builder; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Go version unchanged (${CURRENT_GO}) — no PR needed"
+            echo "No changes — nothing to do"
             exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$CURRENT_GO" != "$NEW_GO" ]; then
+            echo "go_changed=true" >> "$GITHUB_OUTPUT"
+            echo "branch_name=auto-release/go-${NEW_GO}" >> "$GITHUB_OUTPUT"
+          else
+            echo "go_changed=false" >> "$GITHUB_OUTPUT"
+            echo "branch_name=auto-release/tools" >> "$GITHUB_OUTPUT"
           fi
 
           echo "go_version=${NEW_GO}" >> "$GITHUB_OUTPUT"
           echo "builder_tag=v${NEW_GO}-0" >> "$GITHUB_OUTPUT"
-          echo "branch_name=auto-release/go-${NEW_GO}" >> "$GITHUB_OUTPUT"
-          echo "skip=false" >> "$GITHUB_OUTPUT"
-          echo "New Go version: ${CURRENT_GO} → ${NEW_GO}"
+          echo "Go version: ${CURRENT_GO} → ${NEW_GO}"
 
       - name: Sync Dockerfile.builder and FROM tag
-        if: steps.parse.outputs.skip == 'false'
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.go_changed == 'true'
         run: |
           GO_VER="${{ steps.parse.outputs.go_version }}"
 
@@ -67,7 +76,7 @@ jobs:
           fi
 
           # Sync the FROM tag in Dockerfile (builder image reference)
-          sed -i "s|\(golang-cross-builder:\)v[0-9.]\+-0|\1v${GO_VER}-0|" Dockerfile
+          sed -i "s|golang-cross-builder:v[0-9.]*-0|golang-cross-builder:v${GO_VER}-0|" Dockerfile
 
       - name: Commit and push to branch
         if: steps.parse.outputs.skip == 'false'
@@ -75,14 +84,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Dockerfile Dockerfile.builder
-          git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
+          if [ "${{ steps.parse.outputs.go_changed }}" = "true" ]; then
+            git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
+          else
+            git commit -m "🤖 update tool dependencies"
+          fi
 
           BRANCH="${{ steps.parse.outputs.branch_name }}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "HEAD:${BRANCH}"
 
   build-builder:
     needs: detect-and-update
-    if: needs.detect-and-update.outputs.skip == 'false'
+    if: needs.detect-and-update.outputs.skip == 'false' && needs.detect-and-update.outputs.go_changed == 'true'
 
     strategy:
       matrix:
@@ -157,7 +170,7 @@ jobs:
 
   create-pr:
     needs: [detect-and-update, build-builder]
-    if: always() && needs.detect-and-update.result == 'success' && needs.build-builder.result == 'success'
+    if: always() && needs.detect-and-update.result == 'success' && needs.detect-and-update.outputs.skip == 'false' && (needs.detect-and-update.outputs.go_changed == 'false' || needs.build-builder.result == 'success')
 
     runs-on: ubuntu-latest
 
@@ -176,37 +189,52 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           GO_VER="${{ needs.detect-and-update.outputs.go_version }}"
+          GO_CHANGED="${{ needs.detect-and-update.outputs.go_changed }}"
           BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
 
           # Write PR body to temp file to avoid YAML multi-line string issues
-          cat > /tmp/pr-body.md <<- EOF
-          ## What's Changed
+          if [ "$GO_CHANGED" = "true" ]; then
+            cat > /tmp/pr-body.md <<- EOF
+            ## What's Changed
 
-          Bump Go to **${GO_VER}** and update tool dependencies.
+            Bump Go to **${GO_VER}** and update tool dependencies.
 
-          ### Builder images
-          - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`
-          - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`
+            ### Builder images
+            - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`
+            - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`
 
-          ### How to release
-          1. Review and merge this PR
-          2. Create a GitHub Release with tag \`v${GO_VER}\`
-          3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image
-          EOF
+            ### How to release
+            1. Review and merge this PR
+            2. Create a GitHub Release with tag \`v${GO_VER}\`
+            3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image
+            EOF
+            TITLE="🤖 bump go to ${GO_VER} and tools"
+          else
+            cat > /tmp/pr-body.md <<- EOF
+            ## What's Changed
+
+            Update tool dependencies (Go version unchanged at **${GO_VER}**).
+
+            ### How to release
+            1. Review and merge this PR
+            2. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image
+            EOF
+            TITLE="🤖 update tool dependencies"
+          fi
 
           # Check if PR already exists for this branch
           EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #${EXISTING_PR} already exists for branch ${BRANCH}, updating body and assignees"
             gh pr edit "$EXISTING_PR" \
-              --title "🤖 bump go to ${GO_VER} and tools" \
+              --title "$TITLE" \
               --body-file /tmp/pr-body.md \
               --add-assignee gythialy
           else
             gh pr create \
               --base main \
               --head "$BRANCH" \
-              --title "🤖 bump go to ${GO_VER} and tools" \
+              --title "$TITLE" \
               --body-file /tmp/pr-body.md \
               --assignee gythialy
           fi

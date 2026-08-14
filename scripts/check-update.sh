@@ -9,6 +9,8 @@ pushd "${REPO_ROOT}" || exit
 DOCKERFILE=${1:-Dockerfile}
 
 [[ -e "${TMP_DIR}" ]] || mkdir -p "${TMP_DIR}"
+VERSIONS_ENV=${TMP_DIR}/versions.env
+: >"${VERSIONS_ENV}"
 
 is_darwin() {
   case "$(uname -s)" in
@@ -16,6 +18,18 @@ is_darwin() {
   *Darwin*) true ;;
   *) false ;;
   esac
+}
+
+sed_inplace() {
+  if is_darwin; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
+
+write_version() {
+  echo "${1}=${2}" >>"${VERSIONS_ENV}"
 }
 
 update_golang() {
@@ -42,18 +56,14 @@ update_golang() {
   # no new version, keep Dockerfile untouched
   if [[ "${latest_go_version}" == "${go_version_old}" && "${latest_golang_dist_sha}" == "${golang_dist_sha_old}" ]]; then
     echo "golang is up to date: ${go_version_old}"
-    return 0
-  fi
-
-  if is_darwin; then
-    sed -i '' "s/ARG GO_VERSION=.*/ARG GO_VERSION=${latest_go_version}/" "$DOCKERFILE"
-    sed -i '' "s/ARG GOLANG_DIST_SHA=.*/ARG GOLANG_DIST_SHA=${latest_golang_dist_sha}/" "$DOCKERFILE"
   else
-    sed -i "s/ARG GO_VERSION=.*/ARG GO_VERSION=${latest_go_version}/" "$DOCKERFILE"
-    sed -i "s/ARG GOLANG_DIST_SHA=.*/ARG GOLANG_DIST_SHA=${latest_golang_dist_sha}/" "$DOCKERFILE"
+    sed_inplace "s/ARG GO_VERSION=.*/ARG GO_VERSION=${latest_go_version}/" "$DOCKERFILE"
+    sed_inplace "s/ARG GOLANG_DIST_SHA=.*/ARG GOLANG_DIST_SHA=${latest_golang_dist_sha}/" "$DOCKERFILE"
+    echo -e "update golang from $go_version_old: $golang_dist_sha_old to ${latest_go_version}: ${latest_golang_dist_sha}"
   fi
 
-  echo -e "update golang from $go_version_old: $golang_dist_sha_old to ${latest_go_version}: ${latest_golang_dist_sha}"
+  write_version GO_VERSION "${latest_go_version}"
+  write_version GOLANG_DIST_SHA "${latest_golang_dist_sha}"
 }
 
 update_repo() {
@@ -61,33 +71,49 @@ update_repo() {
   local file="$2"
   local version="$3"
   local hash="$4"
+  local flag="${5:-}"
   local tmpfile=${TMP_DIR}/repo.json
 
-  curl -fsSL https://api.github.com/repos/${repo}/releases/latest >"$tmpfile"
+  curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" >"$tmpfile"
 
-  if [[ ! -f "${tmpfile}" ]]; then
-    echo "get release info failed!!!"
+  local latest_version
+  local checksum_file
+  latest_version=$(jq -r <"${tmpfile}" '.tag_name')
+  checksum_file=$(jq -r <"${tmpfile}" --arg name "${file}" '.assets[] | select(.name | endswith($name)).browser_download_url' | head -1)
+
+  if [[ -z "${latest_version}" || "${latest_version}" == "null" || -z "${checksum_file}" || "${checksum_file}" == "null" ]]; then
+    echo "get release info failed for ${repo}!!!"
     exit 1
   fi
 
-  latest_version=$(grep tag_name "${tmpfile}" | cut -d '"' -f 4)
-  checksum_file=$(jq <"${tmpfile}" -r --arg name "${file}" '.assets[] | select(.name | endswith($name)).browser_download_url')
-
+  local checksum
   if [[ "${checksum_file}" == *checksums.txt ]]; then
-    local flag="$5"
-    checksum=$(curl -fsSL "${checksum_file}" | grep -e "${flag}" | awk '{print $1}')
+    checksum=$(curl -fsSL "${checksum_file}" | grep -e "${flag}" | awk '{print $1}' | head -1)
   else
     checksum=$(curl -fsSL "${checksum_file}" | cut -d ' ' -f 1)
   fi
-  if is_darwin; then
-    sed -i '' "s/ARG ${version}=\(.*\)/ARG ${version}=${latest_version}/g" "$DOCKERFILE"
-    sed -i '' "s/ARG ${hash}=\(.*\)/ARG ${hash}=${checksum}/g" "$DOCKERFILE"
-  else
-    sed -i "s/ARG ${version}=\(.*\)/ARG ${version}=${latest_version}/g" "$DOCKERFILE"
-    sed -i "s/ARG ${hash}=\(.*\)/ARG ${hash}=${checksum}/g" "$DOCKERFILE"
+
+  if [[ -z "${checksum}" ]]; then
+    echo "get checksum failed for ${repo}!!!"
+    exit 1
   fi
 
-  echo "update ${repo}, ${latest_version}:${checksum}"
+  local version_old
+  local hash_old
+  version_old=$(sed -n "s/ARG ${version}=\(.*\)/\1/p" "$DOCKERFILE")
+  hash_old=$(sed -n "s/ARG ${hash}=\(.*\)/\1/p" "$DOCKERFILE")
+
+  # no new version, keep Dockerfile untouched
+  if [[ "${latest_version}" == "${version_old}" && "${checksum}" == "${hash_old}" ]]; then
+    echo "${repo} is up to date: ${latest_version}"
+  else
+    sed_inplace "s/ARG ${version}=.*/ARG ${version}=${latest_version}/" "$DOCKERFILE"
+    sed_inplace "s/ARG ${hash}=.*/ARG ${hash}=${checksum}/" "$DOCKERFILE"
+    echo "update ${repo}, ${latest_version}:${checksum}"
+  fi
+
+  write_version "${version}" "${latest_version}"
+  write_version "${hash}" "${checksum}"
 }
 
 update_golang
@@ -95,9 +121,13 @@ update_repo 'sigstore/cosign' 'cosign_checksums.txt' 'COSIGN_VERSION' 'COSIGN_SH
 update_repo 'anchore/syft' 'checksums.txt' 'SYFT_VERSION' 'SYFT_SHA' 'linux_amd64.tar.gz$'
 update_repo 'goreleaser/goreleaser' 'checksums.txt' 'GORELEASER_VERSION' 'GORELEASER_SHA' 'Linux_x86_64.tar.gz$'
 update_repo 'ko-build/ko' 'checksums.txt' 'KO_VERSION' 'KO_SHA' 'ko_Linux_x86_64.tar.gz$'
-update_repo 'git-chglog/git-chglog' 'checksums.txt' 'GIT_CHGLOG_VERSION' 'GIT_CHGLOG_SHA' 'linux_amd64.tar.gz'
+update_repo 'git-chglog/git-chglog' 'checksums.txt' 'GIT_CHGLOG_VERSION' 'GIT_CHGLOG_SHA' 'linux_amd64.tar.gz$'
 update_repo 'docker/buildx' 'checksums.txt' 'BUILDX_VERSION' 'BUILDX_SHA' 'linux-amd64$'
 update_repo 'buildpacks/pack' 'linux.tgz.sha256' 'PACK_VERSION' 'PACK_SHA'
+
+# machine-readable versions for CI (consumed by .github/workflows/auto-release-go.yml)
+echo "##VERSIONS##"
+cat "${VERSIONS_ENV}"
 
 # clean tmp files
 rm -rf ${TMP_DIR}
