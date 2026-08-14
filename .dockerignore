@@ -1,0 +1,14 @@
+.git
+.github
+.alma-snapshots
+.vscode
+tmp
+example
+patch
+scripts
+Dockerfile.builder
+Dockerfile.osx_sdk
+README.md
+LICENSE
+.gitignore
+.DS_Store

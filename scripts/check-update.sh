@@ -118,6 +118,31 @@ update_repo() {
   write_version "${hash}" "${checksum}"
 }
 
+update_goimports() {
+  # goimports ships in the golang.org/x/tools Go module (no GitHub release),
+  # so query the module proxy for the latest version instead.
+  local latest_goimports_version
+  latest_goimports_version=$(curl -fsSL "https://proxy.golang.org/golang.org/x/tools/@latest" | jq -r '.Version')
+
+  local goimports_version_old
+  goimports_version_old=$(sed -n 's/ARG GOIMPORTS_VERSION=\(.*\)/\1/p' "$DOCKERFILE")
+
+  if [[ -z "${latest_goimports_version}" || -z "${goimports_version_old}" ]]; then
+    echo "invalid goimports version value"
+    exit 1
+  fi
+
+  # no new version, keep Dockerfile untouched
+  if [[ "${latest_goimports_version}" == "${goimports_version_old}" ]]; then
+    echo "goimports is up to date: ${latest_goimports_version}"
+  else
+    sed_inplace "s/ARG GOIMPORTS_VERSION=.*/ARG GOIMPORTS_VERSION=${latest_goimports_version}/" "$DOCKERFILE"
+    echo "update goimports from ${goimports_version_old} to ${latest_goimports_version}"
+  fi
+
+  write_version GOIMPORTS_VERSION "${latest_goimports_version}"
+}
+
 update_golang
 
 # tools are only updated together with a golang release
@@ -129,6 +154,7 @@ if [[ "${GO_CHANGED}" == "true" ]]; then
   update_repo 'git-chglog/git-chglog' 'checksums.txt' 'GIT_CHGLOG_VERSION' 'GIT_CHGLOG_SHA' 'linux_amd64.tar.gz$'
   update_repo 'docker/buildx' 'checksums.txt' 'BUILDX_VERSION' 'BUILDX_SHA' 'linux-amd64$'
   update_repo 'buildpacks/pack' 'linux.tgz.sha256' 'PACK_VERSION' 'PACK_SHA'
+  update_goimports
 else
   echo "golang unchanged, skip tool updates"
 fi
