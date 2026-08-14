@@ -19,13 +19,13 @@ ARG OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
 
 ENV OSX_CROSS_PATH=/osxcross
 
-ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 # Install deps
-RUN set -x; echo "Starting image build for Debian    " \
+RUN set -x \
   && dpkg --add-architecture arm64                     \
   && dpkg --add-architecture armhf                     \
   && dpkg --add-architecture i386                      \
-  && apt-get update                                    \
+  && apt-get update -o Acquire::Retries=3              \
   && if [ "${OS_CODENAME}" != "trixie" ]; then \
    apt-get install -y -q software-properties-common multistrap lzma-dev; \
   fi \
@@ -73,10 +73,12 @@ ENV PATH=/usr/local/bin:${OSX_CROSS_PATH}/target/bin:$PATH
 
 WORKDIR "${OSX_CROSS_PATH}"
 
-# install osxcross:
+# install osxcross (shallow fetch of the pinned commit only, not the whole history)
 RUN \
-  git clone https://github.com/tpoechtrager/osxcross.git . \
-  && git checkout -q "${OSX_CROSS_COMMIT:-ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b}"
+  git init -q . \
+  && git remote add origin https://github.com/tpoechtrager/osxcross.git \
+  && git fetch -q --depth 1 origin "${OSX_CROSS_COMMIT:-ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b}" \
+  && git checkout -q FETCH_HEAD
 
 # install osx sdk
 COPY --from=osx-sdk "${OSX_CROSS_PATH}/." "${OSX_CROSS_PATH}"
@@ -93,7 +95,7 @@ RUN \
   # && cmake --version \
   # && cd .. \
   # && rm -rf cmake-${CMAKE_VERSION}.tar.gz cmake-${CMAKE_VERSION}
-  wget -qO- "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local \
+  wget -qO- --tries=3 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local \
   && cmake --version
 
 # https://github.com/tpoechtrager/osxcross/issues/313
@@ -105,7 +107,7 @@ COPY scripts/llvm.sh "${OSX_CROSS_PATH}/"
 RUN \
   # install clang-18
   if [ "${OS_CODENAME}" = "trixie" ]; then \
-    apt-get update && apt-get install -y --no-install-recommends clang-18 && \
+    apt-get update -o Acquire::Retries=3 && apt-get install -y --no-install-recommends clang-18 && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100; \
     sed -i 's/BRANCH=main/BRANCH=release\/18.x/g' build_compiler_rt.sh; \
