@@ -22,10 +22,11 @@ update_golang() {
   local golang_version_file=${TMP_DIR}/golang.json
   curl -fsSL "https://go.dev/dl/?mode=json" >"${golang_version_file}"
 
+  # latest stable golang release: linux/amd64 archive (the .tar.gz used by Dockerfile)
   local latest_go_version
   local latest_golang_dist_sha
-  latest_go_version=$(jq <"${golang_version_file}" -r '[.[].files[] | select(.filename | contains("linux-amd64"))][0] | .version' | sed -e 's/[]\/$*.^[]/\\&/g')
-  latest_golang_dist_sha=$(jq <"${golang_version_file}" -r '[.[].files[] | select(.filename | contains("linux-amd64"))][0] | .sha256')
+  latest_go_version=$(jq -r <"${golang_version_file}" 'first(.[] | select(.stable == true) | .version)')
+  latest_golang_dist_sha=$(jq -r <"${golang_version_file}" 'first(.[] | select(.stable == true) | .files[] | select(.os == "linux" and .arch == "amd64" and .kind == "archive") | .sha256)')
 
   local go_version_old
   local golang_dist_sha_old
@@ -38,12 +39,18 @@ update_golang() {
     exit 1
   fi
 
+  # no new version, keep Dockerfile untouched
+  if [[ "${latest_go_version}" == "${go_version_old}" && "${latest_golang_dist_sha}" == "${golang_dist_sha_old}" ]]; then
+    echo "golang is up to date: ${go_version_old}"
+    return 0
+  fi
+
   if is_darwin; then
-    sed -i '' "s/ARG GO_VERSION=$go_version_old/ARG GO_VERSION=$latest_go_version/g" "$DOCKERFILE"
-    sed -i '' "s/ARG GOLANG_DIST_SHA=$golang_dist_sha_old/ARG GOLANG_DIST_SHA=$latest_golang_dist_sha/g" "$DOCKERFILE"
+    sed -i '' "s/ARG GO_VERSION=.*/ARG GO_VERSION=${latest_go_version}/" "$DOCKERFILE"
+    sed -i '' "s/ARG GOLANG_DIST_SHA=.*/ARG GOLANG_DIST_SHA=${latest_golang_dist_sha}/" "$DOCKERFILE"
   else
-    sed -i "s/ARG GO_VERSION=$go_version_old/ARG GO_VERSION=$latest_go_version/g" "$DOCKERFILE"
-    sed -i "s/ARG GOLANG_DIST_SHA=$golang_dist_sha_old/ARG GOLANG_DIST_SHA=$latest_golang_dist_sha/g" "$DOCKERFILE"
+    sed -i "s/ARG GO_VERSION=.*/ARG GO_VERSION=${latest_go_version}/" "$DOCKERFILE"
+    sed -i "s/ARG GOLANG_DIST_SHA=.*/ARG GOLANG_DIST_SHA=${latest_golang_dist_sha}/" "$DOCKERFILE"
   fi
 
   echo -e "update golang from $go_version_old: $golang_dist_sha_old to ${latest_go_version}: ${latest_golang_dist_sha}"
