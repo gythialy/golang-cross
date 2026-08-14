@@ -1,7 +1,21 @@
 name: Pack OSX SDK
 
 on:
+  schedule:
+    # Monthly on the 1st at 03:00 UTC. The macOS SDK only changes when a new
+    # Xcode ships, so a monthly rebuild is enough to track Apple releases.
+    - cron: '0 3 1 * *'
   workflow_dispatch:
+    inputs:
+      os_versions:
+        description: >-
+          JSON array of runner labels to build, e.g.
+          ["macos-14","macos-15"]. Leave empty to use the default.
+          Each tag carries exactly the SDK from that runner's Xcode
+          (macos-14 -> MacOSX14 SDK tar); -large suffix is stripped from tags.
+        required: false
+        type: string
+        default: '["macos-14","macos-15"]'
 
 permissions: {}
 
@@ -9,9 +23,9 @@ jobs:
   build:
     strategy:
       matrix:
-        os:
-          - macos-14-large
-          - macos-15-large
+        # Runner labels to build. Change the default here or override at
+        # workflow_dispatch time via the os_versions input.
+        os: ${{ fromJson(inputs.os_versions || '["macos-14","macos-15"]') }}
 
     runs-on: ${{ matrix.os }}
     continue-on-error: true
@@ -50,16 +64,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: "tpoechtrager/osxcross"
-          ref: "f873f534c6cdb0776e457af8c7513da1e02abe59"
+          ref: "27d21e4977c9751d01199c7a226a6faf494c3dd9"
           path: "osxcross"
 
       - name: Build OSX SDK
         id: build_sdk_file
         shell: bash
         run: |
+          # Build the macOS SDK tar package with osxcross's script (per
+          # README.SDK.md): it packages each SDK found in the runner's Xcode
+          # as MacOSX<version>.sdk.tar.xz. Each image tag carries exactly one
+          # SDK (macos-14 -> MacOSX14 SDK, macos-15 -> MacOSX15 SDK, ...).
           ./osxcross/tools/gen_sdk_package.sh
           find . -type f -name "*.tar.xz" -print0 | xargs shasum -a 256 | tee sha256sum.txt
-          sdk_file=$(find . -name "*.tar.xz" | head -n 1)
+          sdk_file=$(find . -name "MacOSX*.sdk.tar.xz" | head -n 1)
           [ -f "$sdk_file" ] && echo "sdk_file: $sdk_file"
           echo "sdk_file=${sdk_file}" >> "$GITHUB_OUTPUT"
 
@@ -74,7 +92,7 @@ jobs:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/osx-sdk
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ matrix.os }}
+            type=raw,value=${{ replace(matrix.os, '-large', '') }}
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
