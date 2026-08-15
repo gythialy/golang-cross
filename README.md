@@ -2,38 +2,63 @@
 
 Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of go packages including support for cgo.
 
+> **EOL notice**: Go 1.17 – 1.23 are end-of-life and no longer maintained.
+> Their branches are archived under `archive/go-1.x` tags and remain
+> available for reference but receive no updates. Supported versions:
+> **Go 1.24+** (see `versions.json`).
+
 ## Docker images
 
 ### Pre-built Images
 
-- golang-cross
+Two toolchains in one repo; `latest` points at the newest Go's **zig** image.
+
+- `golang-cross` — zig toolchain (Go 1.25+, self-contained)
   ```
-  docker pull ghcr.io/gythialy/golang-cross:latest
+  docker pull ghcr.io/gythialy/golang-cross:latest            # = v1.26.6-0-trixie-zig
+  docker pull ghcr.io/gythialy/golang-cross:1.26-zig
+  docker pull ghcr.io/gythialy/golang-cross:v1.26.6-0-trixie-zig
   ```
-- golang-cross-builder
+- `golang-cross` — osxcross toolchain (Go 1.24 baseline)
   ```
-  docker pull ghcr.io/gythialy/golang-cross-builder:v1.22.0-0-bullseye
-  docker pull ghcr.io/gythialy/golang-cross-builder:v1.17.1
+  docker pull ghcr.io/gythialy/golang-cross:1.24
+  docker pull ghcr.io/gythialy/golang-cross:v1.24.13-0-trixie
+  ```
+- `golang-cross-builder` — osxcross toolchain image (FROM base of the osxcross main image)
+  ```
+  docker pull ghcr.io/gythialy/golang-cross-builder:1.24
+  docker pull ghcr.io/gythialy/golang-cross-builder:v1.24.13-0-trixie
   ```
 
 ### Build your own
-- Build base image (optional)
+- Build the shared tools base image (golang + cosign/syft/goreleaser/.../gcloud)
   ```
-  docker build -f Dockerfile_builder -t ghcr.io/gythialy/golang-cross-builder:v1.17.1 .
-  # if running docker on M1 (arm64) macOS:
-  docker build --platform linux/amd64 -f Dockerfile.builder -t ghcr.io/gythialy/golang-cross-builder:v1.18 .
+  docker build --platform linux/amd64 -f Dockerfile.tools \
+    --build-arg GO_VERSION=1.26.6 --build-arg OS_CODENAME=trixie \
+    -t ghcr.io/gythialy/golang-cross-tools:v1.26.6-0-trixie .
+  ```
+
+- Build the osxcross builder image (from the tools image)
+  ```
+  docker build --platform linux/amd64 -f Dockerfile.builder \
+    --build-arg GO_VERSION=1.24.13 --build-arg OS_CODENAME=trixie \
+    -t ghcr.io/gythialy/golang-cross-builder:v1.24.13-0-trixie .
   ```
   > Note: [Pack the SDK](https://github.com/tpoechtrager/osxcross#packaging-the-sdk) first or use [GitHub Action](https://github.com/gythialy/golang-cross/actions/workflows/osx-sdk.yaml)
 
-- Build golang-cross image
+- Build the zig image (from the tools image)
   ```
-  docker build --build-arg GO_VERSION=1.22.0 \
-    --build-arg OS_CODENAME=bullseye \
-    --build-arg GOLANG_DIST_SHA=542e936b19542e62679766194364f45141fde55169db2d8d01046555ca9eb4b8 \
-    --build-arg GORELEASER_VERSION=1.24.0 \
-    --build-arg GORELEASER_SHA=4b7d2f1e59ead8047fcef795d66236ff6f8cfe7302c1ff8fb31bd360a3c6f32e \
+  docker build --platform linux/amd64 -f Dockerfile.zig \
+    --build-arg GO_VERSION=1.26.6 --build-arg OS_CODENAME=trixie \
+    -t ghcr.io/gythialy/golang-cross:v1.26.6-0-trixie-zig .
+  ```
+
+- Build golang-cross image (osxcross toolchain, from the builder image)
+  ```
+  docker build --build-arg BUILDER_TAG=v1.24.13-0 \
+    --build-arg OS_CODENAME=trixie \
     -f Dockerfile \
-    -t ghcr.io/gythialy/golang-cross:latest .
+    -t ghcr.io/gythialy/golang-cross:v1.24.13-0-trixie .
   ```
   >  Override default arguments with `--build-arg`
 
@@ -61,8 +86,16 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
 
 ## Examples
 
-- [.goreleaser.yml](example/.goreleaser.yml)
-- [Makefile](example/Makefile#L35-L42)
+- [sqlite-example](example/sqlite-example) — go-sqlite3 cgo (osxcross: [.goreleaser.yml](example/sqlite-example/.goreleaser.yml), zig: [.goreleaser.zig.yml](example/sqlite-example/.goreleaser.zig.yml))
+- [openssl-example](example/openssl-example) — OpenSSL EVP cgo via zig ([.goreleaser.zig-openssl.yml](example/openssl-example/.goreleaser.zig-openssl.yml))
+- [Makefile](example/sqlite-example/Makefile#L35-L42)
+
+Local smoke-test of a published image (also run in CI on release):
+
+```sh
+cd example/sqlite-example && make smoke-test IMAGE=ghcr.io/gythialy/golang-cross:v1.26.6-0-trixie-zig CONFIG=.goreleaser.zig.yml
+cd example/openssl-example && make smoke-test IMAGE=ghcr.io/gythialy/golang-cross:v1.26.6-0-trixie-zig
+```
 
 ## Alternative projects
 

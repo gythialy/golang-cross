@@ -1,6 +1,15 @@
 name: release golang-cross
 
 on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'Comma-separated majors to release, e.g. 1.24,1.25. Empty = read Pending releases from the latest merged auto-release PR.'
+        required: false
+        type: string
   release:
     types:
       - created
@@ -8,12 +17,103 @@ on:
 permissions: {}
 
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      matrix_osxcross: ${{ steps.resolve.outputs.matrix_osxcross }}
+      latest_major: ${{ steps.resolve.outputs.latest_major }}
+      versions: ${{ steps.resolve.outputs.versions }}
+      skip: ${{ steps.resolve.outputs.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve versions to release
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1) explicit input wins (manual dispatch)
+          # 2) release tag -> that single major (backward compat)
+          # 3) push to main -> read Pending releases from the latest merged
+          #    auto-release PR body (skip when there is none)
+          VERSIONS="${{ inputs.versions }}"
+
+          if [ -z "$VERSIONS" ] && [ "${{ github.event_name }}" = "release" ]; then
+            MAJOR_MINOR="${GITHUB_REF_NAME#v}"; MAJOR_MINOR="${MAJOR_MINOR%.*}"
+            echo "Release tag: ${GITHUB_REF_NAME} (major.minor: ${MAJOR_MINOR})"
+            VERSIONS="$MAJOR_MINOR"
+          fi
+
+          if [ -z "$VERSIONS" ]; then
+            echo "Reading Pending releases from latest merged auto-release PR..."
+            PR=$(gh pr list --state merged --author github-actions[bot] --json number,mergedAt \
+                 --jq 'sort_by(.mergedAt) | last | .number')
+            if [ -n "$PR" ]; then
+              echo "PR #${PR}"
+              VERSIONS=$(gh pr view "$PR" --json body --jq '.body' \
+                | sed -n '/## Pending releases/,/^## /p' \
+                | grep '^- ' | awk '{print $2}' | paste -sd, -)
+            fi
+          fi
+
+          echo "Versions to release: ${VERSIONS:-<none>}"
+          if [ -z "$VERSIONS" ]; then
+            if [ "${{ github.event_name }}" = "push" ]; then
+              echo "No Pending releases in the latest merged auto-release PR; nothing to do"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "No versions to release (no input, no release tag, no Pending releases found)"
+              exit 1
+            fi
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          MATRIX=$(jq -c --arg v "$VERSIONS" \
+            '[.releases | to_entries[]
+              | .key as $major
+              | select(($v | split(",")) | index($major))
+              | .value as $r
+              | $r.codenames[]
+              | {major: $major, version: $r.version, sha256: $r.sha256,
+                 builder: $r.builder, codename: .}]' versions.json)
+
+          if [[ "$MATRIX" == "[]" || -z "$MATRIX" ]]; then
+            echo "No version entries in versions.json for: ${VERSIONS}"
+            exit 1
+          fi
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          # osxcross-only matrix for the release job (zig is self-contained and
+          # built by builder.yml's build job, so it needs no main-image build).
+          MATRIX_OSXCROSS=$(echo "$MATRIX" | jq -c '[.[] | select(.builder == "osxcross")]')
+          echo "matrix_osxcross=${MATRIX_OSXCROSS}" >> "$GITHUB_OUTPUT"
+          echo "versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
+          echo "latest_major=$(jq -r '.supported[-1]' versions.json)" >> "$GITHUB_OUTPUT"
+          echo "Matrix: ${MATRIX}"
+
+  build-builder:
+    needs: resolve
+    if: needs.resolve.outputs.skip != 'true'
+    # PR stage did not push builder images; publish them now so the main
+    # image build below can FROM golang-cross-builder:<tag>
+    uses: ./.github/workflows/builder.yml
+    with:
+      ref: main
+      version: ${{ needs.resolve.outputs.versions }}
+      latest_major: ${{ needs.resolve.outputs.latest_major }}
+      publish_latest: true
+      push_images: true
+
   release:
+    needs: [resolve, build-builder]
+    # Only the osxcross main image needs a build here; zig is self-contained
+    # and already built + tagged by builder.yml's build job. Skip entirely
+    # when no osxcross version is in this release (e.g. a zig-only release).
+    if: needs.resolve.outputs.skip != 'true' && needs.resolve.outputs.matrix_osxcross != '[]'
     strategy:
       matrix:
-        codename:
-          - bookworm
-          - trixie
+        include: ${{ fromJson(needs.resolve.outputs.matrix_osxcross) }}
 
     permissions:
       id-token: write
@@ -35,19 +135,24 @@ jobs:
         id: get_repo_owner
         run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare version params
+        id: params
+        run: |
+          GO_VERSION="${{ matrix.version }}"
+          echo "go_version_bare=${GO_VERSION#go}" >> "$GITHUB_OUTPUT"
+          echo "builder_tag=v${GO_VERSION#go}-0" >> "$GITHUB_OUTPUT"
+          # This job only builds the osxcross main image (zig is excluded from
+          # the matrix), so the Dockerfile is fixed.
+          echo "dockerfile=Dockerfile" >> "$GITHUB_OUTPUT"
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
           tags: |
-            type=raw,value=latest,enable=${{ matrix.codename == 'trixie' && (github.event.release.target_commitish == 'main') }}
-            type=semver,pattern={{raw}},enable=${{ matrix.codename == 'trixie' }}
-            type=semver,pattern={{version}},enable=${{ matrix.codename == 'trixie' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ matrix.codename == 'trixie' }}
-            type=semver,pattern={{major}},enable=${{ matrix.codename == 'trixie' }}
-            type=semver,pattern={{raw}},enable=${{ matrix.codename != 'trixie' }},suffix=-${{ matrix.codename }}
-            type=semver,pattern={{version}},enable=${{ matrix.codename != 'trixie' }},suffix=-${{ matrix.codename }}
+            type=raw,value=v${{ steps.params.outputs.go_version_bare }}-0-${{ matrix.codename }}
+            type=raw,value=${{ matrix.major }}
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -57,14 +162,26 @@ jobs:
           username: ${{ steps.get_repo_owner.outputs.repo_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare build args
+        id: args
+        run: |
+          # Dockerfile.zig takes a bare GO_VERSION (no "go" prefix); the
+          # osxcross Dockerfile only takes BUILDER_TAG + OS_CODENAME (Go
+          # already comes from the golang-cross-builder base image).
+          echo "go_arg=${{ steps.params.outputs.go_version_bare }}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         id: buildpush
         with:
           context: .
+          file: ${{ steps.params.outputs.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          load: true
           build-args: |
             OS_CODENAME=${{ matrix.codename }}
-          push: ${{ github.event_name != 'pull_request' }}
+            GO_VERSION=${{ steps.args.outputs.go_arg }}
+            BUILDER_TAG=${{ steps.params.outputs.builder_tag }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -77,3 +194,13 @@ jobs:
         shell: bash
         env:
           DOCKER_PASSWD: ${{ secrets.GITHUB_TOKEN }}
+
+      # Smoke-test the published osxcross image against the sqlite example.
+      # (zig is smoke-tested in builder.yml's build job during PR verification.)
+      - name: Test sqlite-example (cgo cross-compile smoke)
+        if: matrix.codename == 'trixie'
+        run: |
+          cd example/sqlite-example
+          IMAGE="ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:v${{ steps.params.outputs.go_version_bare }}-0-trixie"
+          echo "testing with ${IMAGE}"
+          make smoke-test IMAGE="${IMAGE}" CONFIG=".goreleaser.yml"

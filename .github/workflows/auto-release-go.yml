@@ -5,6 +5,12 @@ on:
     # Daily check at 06:00 UTC
     - cron: '0 6 * * *'
   workflow_dispatch:
+    inputs:
+      tools_only:
+        description: 'Manual mode: update tool versions only (skip golang check). Default false.'
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -17,6 +23,11 @@ jobs:
 
     outputs:
       go_version: ${{ steps.parse.outputs.go_version }}
+      major_minor: ${{ steps.parse.outputs.major_minor }}
+      updated_majors: ${{ steps.parse.outputs.updated_majors }}
+      latest_major: ${{ steps.parse.outputs.latest_major }}
+      latest_version: ${{ steps.parse.outputs.latest_version }}
+      publish_latest: ${{ steps.parse.outputs.publish_latest }}
       builder_tag: ${{ steps.parse.outputs.builder_tag }}
       branch_name: ${{ steps.parse.outputs.branch_name }}
       go_changed: ${{ steps.parse.outputs.go_changed }}
@@ -31,146 +42,153 @@ jobs:
       - name: Run check-update.sh
         id: check
         run: |
-          bash scripts/check-update.sh | tee /tmp/check-update.log
+          EXTRA=""
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}" = "true" ]; then
+            EXTRA="--tools-only"
+            echo "manual tools-only update"
+          fi
+          bash scripts/check-update.sh $EXTRA | tee /tmp/check-update.log
           # consume machine-readable versions block printed by the script
-          GO_VERSION=$(sed -n '/^##VERSIONS##$/,$p' /tmp/check-update.log | grep '^GO_VERSION=' | cut -d= -f2)
+          VERSIONS=$(sed -n '/^##VERSIONS##$/,$p' /tmp/check-update.log)
+          GO_VERSION=$(echo "$VERSIONS" | grep '^GO_VERSION=' | cut -d= -f2)
+          UPDATED_MAJORS=$(echo "$VERSIONS" | grep '^UPDATED_MAJORS=' | cut -d= -f2 || true)
           echo "go_version=${GO_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "updated_majors=${UPDATED_MAJORS:-}" >> "$GITHUB_OUTPUT"
           echo "Detected Go version: ${GO_VERSION}"
 
       - name: Compare and prepare
         id: parse
         run: |
-          CURRENT_GO=$(git show HEAD:Dockerfile | sed -n 's/^ARG GO_VERSION=go//p')
-          NEW_GO="${{ steps.check.outputs.go_version }}"
-          NEW_GO=${NEW_GO#go}
-
           # no file changes means nothing to update
-          if git diff --quiet -- Dockerfile Dockerfile.builder; then
+          if git diff --quiet -- Dockerfile Dockerfile.builder Dockerfile.zig versions.json; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "No changes — nothing to do"
             exit 0
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
-          if [ "$CURRENT_GO" != "$NEW_GO" ]; then
-            echo "go_changed=true" >> "$GITHUB_OUTPUT"
-            echo "branch_name=auto-release/go-${NEW_GO}" >> "$GITHUB_OUTPUT"
-          else
-            echo "go_changed=false" >> "$GITHUB_OUTPUT"
+          TOOLS_ONLY="${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}"
+
+          # Any supported major that moved (from check-update.sh) counts as a
+          # golang update; tools are only updated together with golang, so there
+          # is no tools-only branch — except manual tools_only dispatch, which
+          # rebuilds every supported major's builder with the new tool versions.
+          UPDATED_MAJORS="${{ steps.check.outputs.updated_majors }}"
+          if [ "$TOOLS_ONLY" = "true" ]; then
+            UPDATED_MAJORS=$(jq -r '.supported | join(",")' versions.json)
+            echo "tools-only: rebuild all supported majors: ${UPDATED_MAJORS}"
+            echo "publish_latest=false" >> "$GITHUB_OUTPUT"
             echo "branch_name=auto-release/tools" >> "$GITHUB_OUTPUT"
+            # latest_version: newest supported major's version (for reference)
+            HIGHEST=$(jq -r '.supported[-1]' versions.json)
+            LATEST_VERSION=$(jq -r --arg m "$HIGHEST" '.releases[$m].version // empty' versions.json)
+            echo "latest_major=${HIGHEST}" >> "$GITHUB_OUTPUT"
+            echo "latest_version=${LATEST_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "go_version=${LATEST_VERSION#go}" >> "$GITHUB_OUTPUT"
+            echo "major_minor=${HIGHEST}" >> "$GITHUB_OUTPUT"
+            echo "builder_tag=v${LATEST_VERSION#go}-0" >> "$GITHUB_OUTPUT"
+            echo "updated_majors=${UPDATED_MAJORS}" >> "$GITHUB_OUTPUT"
+            echo "Updated majors: ${UPDATED_MAJORS}"
+            exit 0
           fi
 
-          echo "go_version=${NEW_GO}" >> "$GITHUB_OUTPUT"
-          echo "builder_tag=v${NEW_GO}-0" >> "$GITHUB_OUTPUT"
-          echo "Go version: ${CURRENT_GO} → ${NEW_GO}"
+          if [ -z "$UPDATED_MAJORS" ]; then
+            # fallback: the newest major moved even if the script did not report
+            NEW_GO="${{ steps.check.outputs.go_version }}"
+            UPDATED_MAJORS="${NEW_GO#go}"; UPDATED_MAJORS="${UPDATED_MAJORS%.*}"
+          fi
+          echo "go_changed=true" >> "$GITHUB_OUTPUT"
+          echo "updated_majors=${UPDATED_MAJORS}" >> "$GITHUB_OUTPUT"
+          echo "Updated majors: ${UPDATED_MAJORS}"
 
-      - name: Sync Dockerfile.builder and FROM tag
+          # branch name from the highest updated major's full version
+          HIGHEST_UPDATED=$(echo "$UPDATED_MAJORS" | tr ',' '\n' | sort -V | tail -1)
+          UPDATED_VERSION=$(jq -r --arg m "$HIGHEST_UPDATED" '.releases[$m].version // empty' versions.json)
+          if [ -z "$UPDATED_VERSION" ]; then
+            echo "No version entry for ${HIGHEST_UPDATED} in versions.json"
+            exit 1
+          fi
+          echo "branch_name=auto-release/go-${UPDATED_VERSION#go}" >> "$GITHUB_OUTPUT"
+
+          echo "go_version=${UPDATED_VERSION#go}" >> "$GITHUB_OUTPUT"
+          echo "major_minor=${HIGHEST_UPDATED}" >> "$GITHUB_OUTPUT"
+          echo "builder_tag=v${UPDATED_VERSION#go}-0" >> "$GITHUB_OUTPUT"
+
+          # latest tag only when the newest supported major is among the
+          # updated ones (read from versions.json supported list)
+          HIGHEST=$(jq -r '.supported[-1]' versions.json)
+          echo "latest_major=${HIGHEST}" >> "$GITHUB_OUTPUT"
+          LATEST_VERSION=$(jq -r --arg m "$HIGHEST" '.releases[$m].version // empty' versions.json)
+          echo "latest_version=${LATEST_VERSION}" >> "$GITHUB_OUTPUT"
+          if echo "$UPDATED_MAJORS" | tr ',' '\n' | grep -qx "$HIGHEST"; then
+            echo "publish_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Updated majors: ${UPDATED_MAJORS}"
+
+      - name: Sync builder/zig GO_VERSION and builder tag
         if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.go_changed == 'true'
         run: |
-          GO_VER="${{ steps.parse.outputs.go_version }}"
+          # check-update.sh already wrote the newest supported major's bare
+          # version (e.g. 1.26) into Dockerfile.tools. The builder (osxcross)
+          # tracks its own baseline (1.24), while the zig image tracks the
+          # newest major — they must NOT be synced to the same value.
+          GO_VER=$(grep '^ARG GO_VERSION=' Dockerfile.tools | sed 's/ARG GO_VERSION=//')
 
-          # Sync GO_VERSION in Dockerfile.builder
-          CURRENT_BUILDER_GO=$(grep '^ARG GO_VERSION=' Dockerfile.builder | sed 's/ARG GO_VERSION=//')
-          if [ "$CURRENT_BUILDER_GO" != "$GO_VER" ]; then
-            sed -i "s/^ARG GO_VERSION=${CURRENT_BUILDER_GO}/ARG GO_VERSION=${GO_VER}/" Dockerfile.builder
+          # Dockerfile.zig (zig image) -> newest major
+          if [ -f Dockerfile.zig ]; then
+            CURRENT_ZIG_GO=$(grep '^ARG GO_VERSION=' Dockerfile.zig | sed 's/ARG GO_VERSION=//')
+            if [ "$CURRENT_ZIG_GO" != "$GO_VER" ]; then
+              sed -i "s/^ARG GO_VERSION=${CURRENT_ZIG_GO}/ARG GO_VERSION=${GO_VER}/" Dockerfile.zig
+            fi
           fi
 
-          # Sync the FROM tag in Dockerfile (builder image reference)
-          sed -i "s|golang-cross-builder:v[0-9.]*-0|golang-cross-builder:v${GO_VER}-0|" Dockerfile
+          # Dockerfile.builder (osxcross) + main Dockerfile BUILDER_TAG ->
+          # the osxcross baseline version, not the newest major (1.26 is zig
+          # and has no golang-cross-builder image).
+          OSXCROSS_VER=$(jq -r '[.releases | to_entries[] | select(.value.builder == "osxcross") | .value.version] | sort | last' versions.json)
+          OSXCROSS_BARE="${OSXCROSS_VER#go}"
+          if [ -n "$OSXCROSS_VER" ] && [ "$OSXCROSS_VER" != "null" ]; then
+            CURRENT_BUILDER_GO=$(grep '^ARG GO_VERSION=' Dockerfile.builder | sed 's/ARG GO_VERSION=//')
+            if [ "$CURRENT_BUILDER_GO" != "$OSXCROSS_BARE" ]; then
+              sed -i "s/^ARG GO_VERSION=${CURRENT_BUILDER_GO}/ARG GO_VERSION=${OSXCROSS_BARE}/" Dockerfile.builder
+            fi
+            sed -i "s/^ARG BUILDER_TAG=v[0-9.]*-0/ARG BUILDER_TAG=v${OSXCROSS_BARE}-0/" Dockerfile
+          fi
 
       - name: Commit and push to branch
         if: steps.parse.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Dockerfile Dockerfile.builder
-          if [ "${{ steps.parse.outputs.go_changed }}" = "true" ]; then
-            git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
-          else
-            git commit -m "🤖 update tool dependencies"
-          fi
+          # versions.json is synced by check-update.sh; include it in the bump commit.
+          # Tools only update together with golang, so there is no tools-only commit.
+          git add Dockerfile Dockerfile.tools Dockerfile.builder Dockerfile.zig versions.json
+          git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
 
           BRANCH="${{ steps.parse.outputs.branch_name }}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "HEAD:${BRANCH}"
 
   build-builder:
     needs: detect-and-update
-    if: needs.detect-and-update.outputs.skip == 'false' && needs.detect-and-update.outputs.go_changed == 'true'
-
-    strategy:
-      matrix:
-        codename: [bookworm, trixie]
-
-    runs-on: ubuntu-latest
-    continue-on-error: false
-
-    permissions:
-      id-token: write
-      packages: write
-      contents: read
-
-    env:
-      GOLANG_CROSS_TAG: ${{ needs.detect-and-update.outputs.builder_tag }}-${{ matrix.codename }}
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ needs.detect-and-update.outputs.branch_name }}
-
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.0.1
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-
-      - name: Get Repo Owner
-        id: get_repo_owner
-        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        with:
-          images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-builder
-          tags: |
-            type=raw,value=${{ env.GOLANG_CROSS_TAG }}
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ steps.get_repo_owner.outputs.repo_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        id: buildpush
-        with:
-          context: .
-          file: Dockerfile.builder
-          push: true
-          build-args: |
-            GO_VERSION=${{ needs.detect-and-update.outputs.go_version }}
-            OSX_VERSION_MIN=10.13
-            OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
-            OS_CODENAME=${{ matrix.codename }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Sign the images
-        run: |
-          echo "sign ${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
-          cosign sign --yes "ghcr.io/${STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER}/golang-cross-builder@${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
-        shell: bash
-        env:
-          STEPS_BUILDPUSH_OUTPUTS_DIGEST: ${{ steps.buildpush.outputs.digest }}
-          STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+    if: needs.detect-and-update.outputs.skip == 'false' && (needs.detect-and-update.outputs.go_changed == 'true' || needs.detect-and-update.outputs.branch_name == 'auto-release/tools')
+    # reuse the single builder implementation (versions.json matrix, dual builder)
+    # build only the majors that actually moved; publish_latest is true only
+    # when the newest supported major (1.26) is among them
+    # push_images=false: PR stage builds locally for smoke-test, does NOT
+    # publish to the registry; the release workflow publishes after merge
+    uses: ./.github/workflows/builder.yml
+    with:
+      ref: ${{ needs.detect-and-update.outputs.branch_name }}
+      version: ${{ needs.detect-and-update.outputs.updated_majors }}
+      latest_major: ${{ needs.detect-and-update.outputs.latest_major }}
+      publish_latest: ${{ needs.detect-and-update.outputs.publish_latest }}
+      push_images: false
 
   create-pr:
     needs: [detect-and-update, build-builder]
-    if: always() && needs.detect-and-update.result == 'success' && needs.detect-and-update.outputs.skip == 'false' && (needs.detect-and-update.outputs.go_changed == 'false' || needs.build-builder.result == 'success')
+    if: always() && needs.detect-and-update.result == 'success' && needs.detect-and-update.outputs.skip == 'false' && (needs.detect-and-update.outputs.go_changed == 'true' || needs.detect-and-update.outputs.branch_name == 'auto-release/tools' || needs.build-builder.result == 'success')
 
     runs-on: ubuntu-latest
 
@@ -187,16 +205,44 @@ jobs:
       - name: Create Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATED_MAJORS: ${{ needs.detect-and-update.outputs.updated_majors }}
         run: |
           GO_VER="${{ needs.detect-and-update.outputs.go_version }}"
           GO_CHANGED="${{ needs.detect-and-update.outputs.go_changed }}"
           BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
+          TOOLS_ONLY="${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}"
 
-          # Write PR body with echo/printf — NOT a heredoc: under YAML
-          # block-scalar indentation the heredoc terminator carries leading
-          # spaces, which neither << nor <<- can match, so the heredoc
-          # silently swallows the rest of the script (title + gh pr create
-          # never ran).
+          # Pending releases: the majors that moved in this PR, consumed by
+          # release-golang-cross.yml to build those versions' images.
+          # tools-only rebuilds builders but does not change golang versions,
+          # so no Pending releases (nothing for the release workflow to build).
+          PENDING=""
+          BUILDER_IMAGES=""
+          if [ "$TOOLS_ONLY" != "true" ] && [ -n "$UPDATED_MAJORS" ]; then
+            for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
+              v=$(jq -r --arg m "$m" '.releases[$m].version' versions.json)
+              b=$(jq -r --arg m "$m" '.releases[$m].builder' versions.json)
+              vb="${v#go}"
+              PENDING="${PENDING}
+            - $m ($v)"
+              # zig majors publish the self-contained golang-cross image with a
+              # -zig suffix; osxcross majors publish the golang-cross-builder base.
+              if [ "$b" = "zig" ]; then
+                BUILDER_IMAGES="${BUILDER_IMAGES}
+            - \`ghcr.io/gythialy/golang-cross:v${vb}-0-bookworm-zig\`
+            - \`ghcr.io/gythialy/golang-cross:v${vb}-0-trixie-zig\`"
+              else
+                BUILDER_IMAGES="${BUILDER_IMAGES}
+            - \`ghcr.io/gythialy/golang-cross-builder:v${vb}-0-bookworm\`
+            - \`ghcr.io/gythialy/golang-cross-builder:v${vb}-0-trixie\`"
+              fi
+            done
+          fi
+
+          # Write PR body to temp file with printf/echo — NOT a heredoc: under
+          # YAML block-scalar indentation the heredoc terminator carries leading
+          # spaces, which neither << nor <<- can match, so the heredoc silently
+          # swallowed the rest of the script (title + gh pr create never ran).
           if [ "$GO_CHANGED" = "true" ]; then
             {
               echo "## What's Changed"
@@ -204,13 +250,14 @@ jobs:
               echo "Bump Go to **${GO_VER}** and update tool dependencies."
               echo
               echo "### Builder images"
-              echo "- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`"
-              echo "- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`"
+              printf '%s\n' "${BUILDER_IMAGES}"
+              echo
+              echo "### Pending releases"
+              printf '%s\n' "${PENDING}"
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. Create a GitHub Release with tag \`v${GO_VER}\`"
-              echo "3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image"
+              echo "2. Run the [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) (workflow_dispatch); it reads this list and builds all pending versions"
             } > /tmp/pr-body.md
             TITLE="🤖 bump go to ${GO_VER} and tools"
           else
@@ -221,7 +268,7 @@ jobs:
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image"
+              echo "2. Run the [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) (workflow_dispatch) to publish the main \`golang-cross\` Docker image"
             } > /tmp/pr-body.md
             TITLE="🤖 update tool dependencies"
           fi
