@@ -18,6 +18,7 @@ FROM buildpack-deps:${OS_CODENAME:-trixie} AS osxcross-builder
 
 # Re-declare ARG after FROM to make it available in this stage
 ARG OS_CODENAME=trixie
+ARG TARGETARCH
 
 # osxcross parameters
 ARG OSX_VERSION_MIN=10.13
@@ -90,10 +91,11 @@ RUN \
 # osxcross's tarballs/ dir; build.sh unpacks it automatically)
 COPY --from=osx-sdk /osxcross/tarballs/ "${OSX_CROSS_PATH}/tarballs/"
 
-# install cmake
+# install cmake (host-arch-specific tarball: x86_64 / aarch64)
 ARG CMAKE_VERSION=4.1.0
 RUN \
-  wget -qO- --tries=3 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local \
+  case "$TARGETARCH" in arm64) CMAKE_ARCH=aarch64 ;; *) CMAKE_ARCH=x86_64 ;; esac; \
+  wget -qO- --tries=3 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-${CMAKE_ARCH}.tar.gz" | tar --strip-components=1 -xz -C /usr/local \
   && cmake --version
 
 # https://github.com/tpoechtrager/osxcross/issues/313

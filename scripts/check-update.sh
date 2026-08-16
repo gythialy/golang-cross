@@ -179,6 +179,8 @@ update_repo() {
   local version="$3"
   local hash="$4"
   local flag="${5:-}"
+  local flag_arm64="${6:-}"
+  local file_arm64="${7:-${file}}"
   local tmpfile=${TMP_DIR}/repo.json
 
   curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" >"$tmpfile"
@@ -205,22 +207,51 @@ update_repo() {
     exit 1
   fi
 
+  # arm64 checksum: requested when a distinct arm64 flag OR asset is given
+  local want_arm64=false
+  [[ -n "${flag_arm64}" || "${file_arm64}" != "${file}" ]] && want_arm64=true
+
+  local checksum_arm64=""
+  if [[ "${want_arm64}" == "true" ]]; then
+    local checksum_file_arm64
+    checksum_file_arm64=$(jq -r <"${tmpfile}" --arg name "${file_arm64}" '.assets[] | select(.name | endswith($name)).browser_download_url' | head -1)
+    if [[ -z "${checksum_file_arm64}" || "${checksum_file_arm64}" == "null" ]]; then
+      echo "get arm64 checksum asset failed for ${repo}!!!"
+      exit 1
+    fi
+    if [[ "${checksum_file_arm64}" == *checksums.txt ]]; then
+      checksum_arm64=$(curl -fsSL "${checksum_file_arm64}" | grep -e "${flag_arm64}" | awk '{print $1}' | head -1)
+    else
+      checksum_arm64=$(curl -fsSL "${checksum_file_arm64}" | cut -d ' ' -f 1)
+    fi
+    if [[ -z "${checksum_arm64}" ]]; then
+      echo "get arm64 checksum failed for ${repo}!!!"
+      exit 1
+    fi
+  fi
+
+  local hash_arm64_old=""
+  [[ "${want_arm64}" == "true" ]] && hash_arm64_old=$(sed -n "s/^ARG ${hash}_ARM64=//p" "$DOCKERFILE")
+
   local version_old
   local hash_old
   version_old=$(sed -n "s/ARG ${version}=\(.*\)/\1/p" "$DOCKERFILE")
   hash_old=$(sed -n "s/ARG ${hash}=\(.*\)/\1/p" "$DOCKERFILE")
 
   # no new version, keep Dockerfile untouched
-  if [[ "${latest_version}" == "${version_old}" && "${checksum}" == "${hash_old}" ]]; then
+  if [[ "${latest_version}" == "${version_old}" && "${checksum}" == "${hash_old}" ]] \
+    && { [[ "${want_arm64}" == "false" ]] || [[ "${checksum_arm64}" == "${hash_arm64_old}" ]]; }; then
     echo "${repo} is up to date: ${latest_version}"
   else
     sed_inplace "s/ARG ${version}=.*/ARG ${version}=${latest_version}/" "$DOCKERFILE"
     sed_inplace "s/ARG ${hash}=.*/ARG ${hash}=${checksum}/" "$DOCKERFILE"
+    [[ "${want_arm64}" == "true" ]] && sed_inplace "s/ARG ${hash}_ARM64=.*/ARG ${hash}_ARM64=${checksum_arm64}/" "$DOCKERFILE"
     echo "update ${repo}, ${latest_version}:${checksum}"
   fi
 
   write_version "${version}" "${latest_version}"
   write_version "${hash}" "${checksum}"
+  [[ "${want_arm64}" == "true" ]] && write_version "${hash}_ARM64" "${checksum_arm64}"
 }
 
 update_goimports() {
@@ -299,13 +330,13 @@ fi
 
 # tools follow golang on schedule; in tools-only mode they run regardless
 if [[ "${TOOLS_ONLY}" == "true" || "${GO_CHANGED}" == "true" ]]; then
-  update_repo 'sigstore/cosign' 'cosign_checksums.txt' 'COSIGN_VERSION' 'COSIGN_SHA' 'cosign-linux-amd64$'
-  update_repo 'anchore/syft' 'checksums.txt' 'SYFT_VERSION' 'SYFT_SHA' 'linux_amd64.tar.gz$'
-  update_repo 'goreleaser/goreleaser' 'checksums.txt' 'GORELEASER_VERSION' 'GORELEASER_SHA' 'Linux_x86_64.tar.gz$'
-  update_repo 'ko-build/ko' 'checksums.txt' 'KO_VERSION' 'KO_SHA' 'ko_Linux_x86_64.tar.gz$'
-  update_repo 'git-chglog/git-chglog' 'checksums.txt' 'GIT_CHGLOG_VERSION' 'GIT_CHGLOG_SHA' 'linux_amd64.tar.gz$'
-  update_repo 'docker/buildx' 'checksums.txt' 'BUILDX_VERSION' 'BUILDX_SHA' 'linux-amd64$'
-  update_repo 'buildpacks/pack' 'linux.tgz.sha256' 'PACK_VERSION' 'PACK_SHA'
+  update_repo 'sigstore/cosign' 'cosign_checksums.txt' 'COSIGN_VERSION' 'COSIGN_SHA' 'cosign-linux-amd64$' 'cosign-linux-arm64$'
+  update_repo 'anchore/syft' 'checksums.txt' 'SYFT_VERSION' 'SYFT_SHA' 'linux_amd64.tar.gz$' 'linux_arm64.tar.gz$'
+  update_repo 'goreleaser/goreleaser' 'checksums.txt' 'GORELEASER_VERSION' 'GORELEASER_SHA' 'Linux_x86_64.tar.gz$' 'Linux_arm64.tar.gz$'
+  update_repo 'ko-build/ko' 'checksums.txt' 'KO_VERSION' 'KO_SHA' 'ko_Linux_x86_64.tar.gz$' 'ko_Linux_arm64.tar.gz$'
+  update_repo 'git-chglog/git-chglog' 'checksums.txt' 'GIT_CHGLOG_VERSION' 'GIT_CHGLOG_SHA' 'linux_amd64.tar.gz$' 'linux_arm64.tar.gz$'
+  update_repo 'docker/buildx' 'checksums.txt' 'BUILDX_VERSION' 'BUILDX_SHA' 'linux-amd64$' 'linux-arm64$'
+  update_repo 'buildpacks/pack' 'linux.tgz.sha256' 'PACK_VERSION' 'PACK_SHA' '' '' 'linux-arm64.tgz.sha256'
   update_goimports
   update_zig
 else

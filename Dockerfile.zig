@@ -33,6 +33,7 @@ FROM ghcr.io/gythialy/golang-cross-tools:v${GO_VERSION}-0-${OS_CODENAME:-trixie}
 # Re-declare ARG after FROM to make it available in this stage
 ARG OS_CODENAME=trixie
 ARG ZIG_VERSION=0.16.0
+ARG TARGETARCH
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -40,13 +41,15 @@ LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
 COPY entrypoint.sh /
 
 # install zig (single binary, replaces mingw-w64 + musl-tools + arm cross toolchains + osxcross)
+# zig ships host-arch-specific tarballs: x86_64-linux (amd64) / aarch64-linux (arm64)
 RUN \
 	apt-get update && apt-get install -y --no-install-recommends xz-utils ca-certificates wget && \
 	rm -rf /var/lib/apt/lists/* && \
-	ZIG_DOWNLOAD_FILE=zig-x86_64-linux-${ZIG_VERSION}.tar.xz && \
+	case "$TARGETARCH" in arm64) ZIG_ARCH=aarch64 ;; *) ZIG_ARCH=x86_64 ;; esac; \
+	ZIG_DOWNLOAD_FILE=zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz && \
 	wget -q https://ziglang.org/download/${ZIG_VERSION}/${ZIG_DOWNLOAD_FILE} && \
 	tar -xf ${ZIG_DOWNLOAD_FILE} -C /opt && \
-	ln -s /opt/zig-x86_64-linux-${ZIG_VERSION}/zig /usr/local/bin/zig && \
+	ln -s /opt/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}/zig /usr/local/bin/zig && \
 	rm ${ZIG_DOWNLOAD_FILE} && \
 	zig version
 
