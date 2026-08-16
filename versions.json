@@ -12,7 +12,10 @@
         "bookworm",
         "trixie"
       ],
-      "builder": "osxcross"
+      "builders": [
+        "osxcross",
+        "zig"
+      ]
     },
     "1.25": {
       "version": "go1.25.13",
@@ -21,7 +24,9 @@
         "bookworm",
         "trixie"
       ],
-      "builder": "zig"
+      "builders": [
+        "zig"
+      ]
     },
     "1.26": {
       "version": "go1.26.6",
@@ -30,7 +35,9 @@
         "bookworm",
         "trixie"
       ],
-      "builder": "zig"
+      "builders": [
+        "zig"
+      ]
     }
   }
 }

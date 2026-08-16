@@ -12,14 +12,18 @@ Docker container to do cross compilation (Linux, windows, macOS, ARM, ARM64) of 
 ### Pre-built Images
 
 Two toolchains in one repo; `latest` points at the newest Go's **zig** image.
+Go 1.24 ships **both** (osxcross + zig); the zig variant is recommended —
+smaller, faster, native arm64. See the migration note below.
 
-- `golang-cross` — zig toolchain (Go 1.25+, self-contained)
+- `golang-cross` — zig toolchain (Go 1.24+, self-contained)
   ```
   docker pull ghcr.io/gythialy/golang-cross:latest            # = v1.26.6-0-trixie-zig
   docker pull ghcr.io/gythialy/golang-cross:1.26-zig
+  docker pull ghcr.io/gythialy/golang-cross:1.25-zig
+  docker pull ghcr.io/gythialy/golang-cross:1.24-zig          # Go 1.24 on zig
   docker pull ghcr.io/gythialy/golang-cross:v1.26.6-0-trixie-zig
   ```
-- `golang-cross` — osxcross toolchain (Go 1.24 baseline)
+- `golang-cross` — osxcross toolchain (Go 1.24 only, legacy)
   ```
   docker pull ghcr.io/gythialy/golang-cross:1.24
   docker pull ghcr.io/gythialy/golang-cross:v1.24.13-0-trixie
@@ -61,6 +65,45 @@ Two toolchains in one repo; `latest` points at the newest Go's **zig** image.
     -t ghcr.io/gythialy/golang-cross:v1.24.13-0-trixie .
   ```
   >  Override default arguments with `--build-arg`
+
+## Migrating from osxcross to zig
+
+> **⚠️ Breaking change**: the zig image uses a different C cross-compiler, so
+> your goreleaser config's `CC`/`CXX` must change. osxcross images are frozen
+> at Go 1.24 and receive no further Go updates — zig is the forward path.
+
+Both toolchains ship the same release tools (goreleaser/cosign/syft/...) but
+compile C with different compilers:
+
+| target | osxcross (legacy) | zig (recommended) |
+|---|---|---|
+| darwin amd64 | `o64-clang` | `zig cc -target x86_64-macos` |
+| darwin arm64 | `oa64-clang` | `zig cc -target aarch64-macos` |
+| linux amd64 | (default gcc) | `zig cc -target x86_64-linux-gnu` |
+| windows amd64 | `x86_64-w64-mingw32-gcc` | `zig cc -target x86_64-windows-gnu` |
+
+Steps:
+
+1. Switch the image tag — append `-zig` (e.g. `golang-cross:1.24` →
+   `golang-cross:1.24-zig`, or `...:v1.24.13-0-trixie-zig`).
+2. Replace `CC`/`CXX` per the table above.
+3. For darwin targets, add the macOS SDK flags (the zig image exposes the SDK
+   path as `OSX_SDK_PATH`) and `-ldflags "-s -w"` (skips dsymutil, which the
+   zig image does not ship):
+
+   ```yaml
+   env:
+     - CGO_ENABLED=1
+     - CC=zig cc -target x86_64-macos
+     - CXX=zig c++ -target x86_64-macos
+     - CGO_CFLAGS=-isysroot {{ .Env.OSX_SDK_PATH }} -mmacosx-version-min=11.0
+     - CGO_LDFLAGS=-isysroot {{ .Env.OSX_SDK_PATH }} -L{{ .Env.OSX_SDK_PATH }}/usr/lib -F{{ .Env.OSX_SDK_PATH }}/System/Library/Frameworks
+   ldflags:
+     - -s -w
+   ```
+
+Reference configs: `example/sqlite-example/.goreleaser.yml` (osxcross) vs
+`example/sqlite-example/.goreleaser.zig.yml` (zig).
 
 ## Usage
 

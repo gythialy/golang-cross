@@ -75,9 +75,10 @@ jobs:
               | .key as $major
               | select(($v | split(",")) | index($major))
               | .value as $r
-              | $r.codenames[]
+              | $r.codenames[] as $c
+              | $r.builders[] as $b
               | {major: $major, version: $r.version, sha256: $r.sha256,
-                 builder: $r.builder, codename: .}]' versions.json)
+                 builder: $b, codename: $c}]' versions.json)
 
           if [[ "$MATRIX" == "[]" || -z "$MATRIX" ]]; then
             echo "No version entries in versions.json for: ${VERSIONS}"

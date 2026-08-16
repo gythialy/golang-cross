@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix_tools: ${{ steps.set-matrix.outputs.matrix_tools }}
       latest_major: ${{ steps.latest.outputs.major }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,16 +42,21 @@ jobs:
       - name: Build matrix from versions.json
         id: set-matrix
         run: |
-          # versions.json: each supported version x codename, tagged with builder.
+          # versions.json: each supported version x codename x builder.
+          # A version may list multiple builders (1.24 ships both osxcross and
+          # zig); matrix expands the product, matrix_tools dedupes to
+          # version x codename for the shared tools image.
           # When version input is set (auto-release), only build those versions'
           # builder images (comma-separated list allowed, e.g. 1.24,1.25);
           # manual dispatch builds the full matrix.
           if [ -n "${{ inputs.version }}" ]; then
-            MATRIX=$(jq -c --arg v "${{ inputs.version }}" '[.releases | to_entries[] | .key as $m | select(($v | split(",")) | index($m)) | .value as $v2 | $v2.codenames[] | {gover: $m, go_version: $v2.version, codename: ., builder: $v2.builder}]' versions.json)
+            MATRIX=$(jq -c --arg v "${{ inputs.version }}" '[.releases | to_entries[] | .key as $m | select(($v | split(",")) | index($m)) | .value as $v2 | $v2.codenames[] as $c | $v2.builders[] as $b | {gover: $m, go_version: $v2.version, codename: $c, builder: $b}]' versions.json)
           else
-            MATRIX=$(jq -c '[.releases | to_entries[] | .key as $m | .value as $v | $v.codenames[] | {gover: $m, go_version: $v.version, codename: ., builder: $v.builder}]' versions.json)
+            MATRIX=$(jq -c '[.releases | to_entries[] | .key as $m | .value as $v | $v.codenames[] as $c | $v.builders[] as $b | {gover: $m, go_version: $v.version, codename: $c, builder: $b}]' versions.json)
           fi
+          MATRIX_TOOLS=$(echo "$MATRIX" | jq -c '[.[] | {gover, go_version, codename}] | unique')
           echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          echo "matrix_tools=${MATRIX_TOOLS}" >> "$GITHUB_OUTPUT"
           echo "Matrix: ${MATRIX}"
 
       - name: Resolve latest major
@@ -71,7 +77,7 @@ jobs:
     needs: load-versions
     strategy:
       matrix:
-        include: ${{ fromJson(needs.load-versions.outputs.matrix) }}
+        include: ${{ fromJson(needs.load-versions.outputs.matrix_tools) }}
 
     runs-on: ubuntu-latest
     continue-on-error: false
@@ -126,6 +132,7 @@ jobs:
           context: .
           file: Dockerfile.tools
           push: true
+          platforms: linux/amd64,linux/arm64
           build-args: |
             GO_VERSION=${{ steps.tools.outputs.go_bare }}
             OS_CODENAME=${{ matrix.codename }}
@@ -220,6 +227,10 @@ jobs:
           # local daemon for docker run; push=true implies load via registry
           load: ${{ inputs.push_images == false }}
           push: ${{ github.event_name == 'workflow_dispatch' && inputs.push_images != false || github.event_name == 'workflow_call' && inputs.push_images == true }}
+          # zig is verified multi-arch (amd64+arm64); osxcross stays amd64-only
+          # until its cross toolchain is verified on arm64 hosts. PR smoke-test
+          # (push_images=false) loads a single amd64 image into the local daemon.
+          platforms: ${{ matrix.builder == 'zig' && inputs.push_images != false && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
             GO_VERSION=${{ steps.dockerfile.outputs.go_bare }}
             OSX_VERSION_MIN=10.13
