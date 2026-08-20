@@ -1,6 +1,6 @@
 ARG OS_CODENAME=bookworm
 
-FROM ghcr.io/gythialy/golang-cross-builder:v1.26.6-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-builder:v1.27.0-0-${OS_CODENAME:-trixie}
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
 LABEL org.opencontainers.image.source=https://github.com/gythialy/golang-cross
@@ -14,8 +14,8 @@ ARG COSIGN_VERSION=v3.1.3
 ARG COSIGN_SHA=4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
 ARG SYFT_VERSION=v1.51.0
 ARG SYFT_SHA=2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
-ARG GO_VERSION=go1.26.6
-ARG GOLANG_DIST_SHA=708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89
+ARG GO_VERSION=go1.27.0
+ARG GOLANG_DIST_SHA=675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685
 ARG GORELEASER_VERSION=v2.17.1
 ARG GORELEASER_SHA=a99bbc7ae0d8d897b07c4c497a9b62f222558804715ef219d1af05a7e417bc80
 ARG KO_VERSION=v0.19.1
