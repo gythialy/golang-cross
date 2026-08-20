@@ -192,33 +192,37 @@ jobs:
           GO_CHANGED="${{ needs.detect-and-update.outputs.go_changed }}"
           BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
 
-          # Write PR body to temp file to avoid YAML multi-line string issues
+          # Write PR body with echo/printf — NOT a heredoc: under YAML
+          # block-scalar indentation the heredoc terminator carries leading
+          # spaces, which neither << nor <<- can match, so the heredoc
+          # silently swallows the rest of the script (title + gh pr create
+          # never ran).
           if [ "$GO_CHANGED" = "true" ]; then
-            cat > /tmp/pr-body.md <<- EOF
-            ## What's Changed
-
-            Bump Go to **${GO_VER}** and update tool dependencies.
-
-            ### Builder images
-            - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`
-            - \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`
-
-            ### How to release
-            1. Review and merge this PR
-            2. Create a GitHub Release with tag \`v${GO_VER}\`
-            3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image
-            EOF
+            {
+              echo "## What's Changed"
+              echo
+              echo "Bump Go to **${GO_VER}** and update tool dependencies."
+              echo
+              echo "### Builder images"
+              echo "- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-bookworm\`"
+              echo "- \`ghcr.io/gythialy/golang-cross-builder:v${GO_VER}-0-trixie\`"
+              echo
+              echo "### How to release"
+              echo "1. Review and merge this PR"
+              echo "2. Create a GitHub Release with tag \`v${GO_VER}\`"
+              echo "3. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image"
+            } > /tmp/pr-body.md
             TITLE="🤖 bump go to ${GO_VER} and tools"
           else
-            cat > /tmp/pr-body.md <<- EOF
-            ## What's Changed
-
-            Update tool dependencies (Go version unchanged at **${GO_VER}**).
-
-            ### How to release
-            1. Review and merge this PR
-            2. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image
-            EOF
+            {
+              echo "## What's Changed"
+              echo
+              echo "Update tool dependencies (Go version unchanged at **${GO_VER}**)."
+              echo
+              echo "### How to release"
+              echo "1. Review and merge this PR"
+              echo "2. The [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) will build and publish the main \`golang-cross\` Docker image"
+            } > /tmp/pr-body.md
             TITLE="🤖 update tool dependencies"
           fi
 
