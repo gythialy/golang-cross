@@ -85,6 +85,18 @@ jobs:
         id: get_repo_owner
         run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
+      - name: Compute image tag
+        id: compute_tag
+        shell: bash
+        env:
+          OS_LABEL: ${{ matrix.os }}
+        run: |
+          # Strip the optional -large suffix from the runner label for the
+          # image tag (macos-14-large -> macos-14). GitHub Actions expressions
+          # have no replace() function, so do it in shell.
+          tag="${OS_LABEL%-large}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -92,7 +104,7 @@ jobs:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/osx-sdk
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ replace(matrix.os, '-large', '') }}
+            type=raw,value=${{ steps.compute_tag.outputs.tag }}
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
