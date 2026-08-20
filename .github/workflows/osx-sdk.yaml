@@ -89,7 +89,7 @@ jobs:
           OS_LABEL: ${{ matrix.os }}
         run: |
           # Strip the optional -large suffix from the runner label for the
-          # image tag (macos-14-large -> macos-14). GitHub Actions expressions
+          # image tag (macos-13-large -> macos-13). GitHub Actions expressions
           # have no replace() function, so do it in shell.
           tag="${OS_LABEL%-large}"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
