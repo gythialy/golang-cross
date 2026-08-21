@@ -2,7 +2,8 @@
   "supported": [
     "1.24",
     "1.25",
-    "1.26"
+    "1.26",
+    "1.27"
   ],
   "releases": {
     "1.24": {
@@ -31,6 +32,19 @@
     "1.26": {
       "version": "go1.26.6",
       "sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89",
+      "version": "go1.26.7",
+      "sha256": "ffb5f8de10c62550dfddab66b36b57030721e0a44a3218e9e1181d7b59f121ca",
+      "codenames": [
+        "bookworm",
+        "trixie"
+      ],
+      "builders": [
+        "zig"
+      ]
+    },
+    "1.27": {
+      "version": "go1.27.0",
+      "sha256": "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685",
       "codenames": [
         "bookworm",
         "trixie"
