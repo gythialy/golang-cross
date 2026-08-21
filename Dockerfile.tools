@@ -10,7 +10,7 @@
 #
 # GO_VERSION is WITHOUT the "go" prefix (matches the official golang image
 # tag, e.g. golang:1.26.6-trixie).
-ARG GO_VERSION=1.26.6
+ARG GO_VERSION=1.27.0
 ARG OS_CODENAME=trixie
 
 FROM golang:${GO_VERSION}-${OS_CODENAME}
