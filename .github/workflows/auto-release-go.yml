@@ -12,7 +12,10 @@ on:
         type: boolean
         default: false
 
-permissions: {}
+permissions:
+  contents: read
+  packages: write
+  id-token: write
 
 jobs:
   detect-and-update:
