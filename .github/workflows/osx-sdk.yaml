@@ -10,12 +10,13 @@ on:
       os_versions:
         description: >-
           JSON array of runner labels to build, e.g.
-          ["macos-14","macos-15"]. Leave empty to use the default.
+          ["macos-13"]. Leave empty to use the default.
           Each tag carries exactly the SDK from that runner's Xcode
-          (macos-14 -> MacOSX14 SDK tar); -large suffix is stripped from tags.
+          (macos-13 -> MacOSX14 SDK tar, matching the Dockerfile default);
+          -large suffix is stripped from tags.
         required: false
         type: string
-        default: '["macos-14","macos-15"]'
+        default: '["macos-13"]'
 
 permissions: {}
 
@@ -25,7 +26,7 @@ jobs:
       matrix:
         # Runner labels to build. Change the default here or override at
         # workflow_dispatch time via the os_versions input.
-        os: ${{ fromJson(inputs.os_versions || '["macos-14","macos-15"]') }}
+        os: ${{ fromJson(inputs.os_versions || '["macos-13"]') }}
 
     runs-on: ${{ matrix.os }}
     continue-on-error: true
@@ -39,10 +40,6 @@ jobs:
       DOCKER_REGISTRY: "ghcr.io"
 
     steps:
-      # - name: Setup Xcode
-      #   uses: maxim-lobanov/setup-xcode@v1
-      #   with:
-      #     xcode-version: latest
       - name: Set up Docker
         uses: crazy-max/ghaction-setup-docker@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
         env:
@@ -74,7 +71,7 @@ jobs:
           # Build the macOS SDK tar package with osxcross's script (per
           # README.SDK.md): it packages each SDK found in the runner's Xcode
           # as MacOSX<version>.sdk.tar.xz. Each image tag carries exactly one
-          # SDK (macos-14 -> MacOSX14 SDK, macos-15 -> MacOSX15 SDK, ...).
+          # SDK (macos-13 -> MacOSX14 SDK, matching the Dockerfile default).
           ./osxcross/tools/gen_sdk_package.sh
           find . -type f -name "*.tar.xz" -print0 | xargs shasum -a 256 | tee sha256sum.txt
           sdk_file=$(find . -name "MacOSX*.sdk.tar.xz" | head -n 1)
@@ -92,7 +89,7 @@ jobs:
           OS_LABEL: ${{ matrix.os }}
         run: |
           # Strip the optional -large suffix from the runner label for the
-          # image tag (macos-14-large -> macos-14). GitHub Actions expressions
+          # image tag (macos-13-large -> macos-13). GitHub Actions expressions
           # have no replace() function, so do it in shell.
           tag="${OS_LABEL%-large}"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"

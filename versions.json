@@ -1,0 +1,43 @@
+{
+  "supported": [
+    "1.24",
+    "1.25",
+    "1.26"
+  ],
+  "releases": {
+    "1.24": {
+      "version": "go1.24.13",
+      "sha256": "1fc94b57134d51669c72173ad5d49fd62afb0f1db9bf3f798fd98ee423f8d730",
+      "codenames": [
+        "bookworm",
+        "trixie"
+      ],
+      "builders": [
+        "osxcross",
+        "zig"
+      ]
+    },
+    "1.25": {
+      "version": "go1.25.13",
+      "sha256": "39042a078ea9ceebe3ecda4a7188f0f5b96e14a071d27923ba7f40b456e85ae3",
+      "codenames": [
+        "bookworm",
+        "trixie"
+      ],
+      "builders": [
+        "zig"
+      ]
+    },
+    "1.26": {
+      "version": "go1.26.6",
+      "sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89",
+      "codenames": [
+        "bookworm",
+        "trixie"
+      ],
+      "builders": [
+        "zig"
+      ]
+    }
+  }
+}

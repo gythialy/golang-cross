@@ -1,0 +1,29 @@
+# EXPERIMENTAL: openssl cgo example for the zig-based toolchain (Dockerfile.zig).
+#
+# Verifies that zig cc can handle complex cgo (OpenSSL EVP) by building
+# OpenSSL from source as a static libcrypto and linking it explicitly.
+#
+# Notes:
+#   - CGO_LDFLAGS must reference the static archive directly; -lcrypto would
+#     make zig look for a dynamic libcrypto and fail
+#   - glibc symbol-versioning conflicts rule out linking the distro's
+#     libssl-dev .so through zig cc - build OpenSSL from source instead
+project_name: golang-cross-openssl-example
+
+builds:
+  - id: openssl-example
+    binary: openssl-example
+    main: ./main.go
+    env:
+      - CGO_ENABLED=1
+      - CC=zig cc -target x86_64-linux-gnu
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+# no sbom/checksum for the smoke example

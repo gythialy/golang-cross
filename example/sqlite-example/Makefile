@@ -15,6 +15,11 @@ BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
 GO_BUILDER_VERSION=latest
+# Smoke-test image + goreleaser config. Defaults match the published
+# osxcross image; override for zig, e.g.:
+#   make smoke-test IMAGE=ghcr.io/gythialy/golang-cross:v1.26.6-zig CONFIG=.goreleaser.zig.yml
+IMAGE ?= ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION)
+CONFIG ?= .goreleaser.yml
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -39,7 +44,11 @@ snapshot:
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(GOPATH)/src:/go/src \
 		-w /golang-cross-example \
-		ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --snapshot --clean
+		$(IMAGE) --snapshot --clean --config $(CONFIG)
+
+# Smoke-test: run goreleaser against the given image/config to verify the
+# published image can cross-compile this project (osxcross or zig).
+smoke-test: snapshot
 
 release: changelog
 	docker run --rm --privileged \

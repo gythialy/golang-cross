@@ -1,0 +1,88 @@
+# EXPERIMENTAL: zig-based cross-compilation example config
+#
+# Mirrors .goreleaser.yml but uses `zig cc` as the C cross-compiler,
+# replacing osxcross (o64-clang / oa64-clang) and mingw-w64 (x86_64-w64-mingw32-gcc).
+# Meant to run inside the Dockerfile.zig image.
+#
+# Key differences vs .goreleaser.yml:
+#   1. darwin: CC="zig cc -target x86_64-macos" + explicit SDK flags
+#      (zig does not auto-attach the macOS SDK; OSX_SDK_PATH is set by the image)
+#   2. windows: CC="zig cc -target x86_64-windows-gnu" (replaces mingw)
+#   3. linux: CC="zig cc -target x86_64-linux-gnu" (explicit; keep glibc like before)
+#   4. ldflags "-s -w" required for darwin: skips dsymutil (not shipped in image)
+#      -s -w is also goreleaser's default, but explicit here for clarity
+#
+# Verify:
+#   docker build --platform linux/amd64 -f Dockerfile.zig -t golang-cross:zig .
+#   docker run --rm --platform linux/amd64 -v $(pwd):/golang-cross-example -w /golang-cross-example \
+#     golang-cross:zig release --snapshot --clean --config .goreleaser.zig.yml
+project_name: golang-cross-example
+env:
+  - GO111MODULE=on
+builds:
+
+- id: example-darwin-amd64
+  binary: example
+  ldflags:
+    - -s -w
+  env:
+    - CGO_ENABLED=1
+    - CC=zig cc -target x86_64-macos
+    - CXX=zig c++ -target x86_64-macos
+    - CGO_CFLAGS=-isysroot {{ .Env.OSX_SDK_PATH }} -mmacosx-version-min=11.0
+    - CGO_LDFLAGS=-isysroot {{ .Env.OSX_SDK_PATH }} -L{{ .Env.OSX_SDK_PATH }}/usr/lib -F{{ .Env.OSX_SDK_PATH }}/System/Library/Frameworks
+  main: ./main.go
+  goos:
+    - darwin
+  goarch:
+    - amd64
+- id: example-darwin-arm64
+  binary: example
+  ldflags:
+    - -s -w
+  env:
+    - CGO_ENABLED=1
+    - CC=zig cc -target aarch64-macos
+    - CXX=zig c++ -target aarch64-macos
+    - CGO_CFLAGS=-isysroot {{ .Env.OSX_SDK_PATH }} -mmacosx-version-min=11.0
+    - CGO_LDFLAGS=-isysroot {{ .Env.OSX_SDK_PATH }} -L{{ .Env.OSX_SDK_PATH }}/usr/lib -F{{ .Env.OSX_SDK_PATH }}/System/Library/Frameworks
+  main: ./main.go
+  goos:
+    - darwin
+  goarch:
+    - arm64
+- id: example-linux
+  binary: example
+  ldflags:
+    - -s -w
+  env:
+    - CGO_ENABLED=1
+    - CC=zig cc -target x86_64-linux-gnu
+    - CXX=zig c++ -target x86_64-linux-gnu
+  main: ./main.go
+  goos:
+    - linux
+  goarch:
+    - amd64
+- id: example-windows-x64
+  ldflags:
+    - -s -w
+  binary: example
+  env:
+    - CGO_ENABLED=1
+    - CC=zig cc -target x86_64-windows-gnu
+    - CXX=zig c++ -target x86_64-windows-gnu
+  main: ./main.go
+  goos:
+    - windows
+  goarch:
+    - amd64
+
+sboms:
+  - artifacts: binary
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+snapshot:
+  name_template: SNAPSHOT-{{.ShortCommit}}

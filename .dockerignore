@@ -4,6 +4,7 @@
 .vscode
 tmp
 example
+**/dist
 Dockerfile.builder
 Dockerfile.osx_sdk
 README.md
