@@ -150,7 +150,7 @@ jobs:
           # Dockerfile.builder (osxcross) + main Dockerfile BUILDER_TAG ->
           # the osxcross baseline version, not the newest major (1.26 is zig
           # and has no golang-cross-builder image).
-          OSXCROSS_VER=$(jq -r '[.releases | to_entries[] | select(.value.builder == "osxcross") | .value.version] | sort | last' versions.json)
+          OSXCROSS_VER=$(jq -r '[.releases | to_entries[] | select(.value.builders | index("osxcross")) | .value.version] | sort | last' versions.json)
           OSXCROSS_BARE="${OSXCROSS_VER#go}"
           if [ -n "$OSXCROSS_VER" ] && [ "$OSXCROSS_VER" != "null" ]; then
             CURRENT_BUILDER_GO=$(grep '^ARG GO_VERSION=' Dockerfile.builder | sed 's/ARG GO_VERSION=//')
@@ -224,21 +224,24 @@ jobs:
           if [ "$TOOLS_ONLY" != "true" ] && [ -n "$UPDATED_MAJORS" ]; then
             for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
               v=$(jq -r --arg m "$m" '.releases[$m].version' versions.json)
-              b=$(jq -r --arg m "$m" '.releases[$m].builder' versions.json)
               vb="${v#go}"
               PENDING="${PENDING}
             - $m ($v)"
+              # A major may list multiple builders (1.24 = osxcross + zig); emit
+              # one image line per builder so the release PR body stays accurate.
               # zig majors publish the self-contained golang-cross image with a
               # -zig suffix; osxcross majors publish the golang-cross-builder base.
-              if [ "$b" = "zig" ]; then
-                BUILDER_IMAGES="${BUILDER_IMAGES}
+              for b in $(jq -r --arg m "$m" '.releases[$m].builders[]' versions.json); do
+                if [ "$b" = "zig" ]; then
+                  BUILDER_IMAGES="${BUILDER_IMAGES}
             - \`ghcr.io/gythialy/golang-cross:v${vb}-0-bookworm-zig\`
             - \`ghcr.io/gythialy/golang-cross:v${vb}-0-trixie-zig\`"
-              else
-                BUILDER_IMAGES="${BUILDER_IMAGES}
+                else
+                  BUILDER_IMAGES="${BUILDER_IMAGES}
             - \`ghcr.io/gythialy/golang-cross-builder:v${vb}-0-bookworm\`
             - \`ghcr.io/gythialy/golang-cross-builder:v${vb}-0-trixie\`"
-              fi
+                fi
+              done
             done
           fi
 

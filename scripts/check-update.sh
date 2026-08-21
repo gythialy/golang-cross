@@ -41,8 +41,16 @@ sync_versions_json() {
   if [[ ! -f "${VERSIONS_JSON}" ]]; then
     return 0
   fi
+  # NEW major (listed in .supported but missing from .releases): create the
+  # entry with the detected version/sha and explicit default codenames/builders
+  # (zig + bookworm/trixie are the forward path since 1.25). The PR diff still
+  # surfaces these defaults for a conscious toolchain review.
   if ! jq -e --arg m "${major_minor}" '.releases[$m]' "${VERSIONS_JSON}" >/dev/null 2>&1; then
-    echo "versions.json has no entry for ${major_minor}, skip sync"
+    jq --arg m "${major_minor}" --arg v "${new_version}" --arg s "${new_sha}" \
+      '.releases[$m] = {version: $v, sha256: $s, codenames: ["bookworm", "trixie"], builders: ["zig"]}' \
+      "${VERSIONS_JSON}" >"${TMP_DIR}/versions.json.tmp" || return 1
+    mv "${TMP_DIR}/versions.json.tmp" "${VERSIONS_JSON}" || return 1
+    echo "versions.json: created entry for new major ${major_minor} -> ${new_version} (default zig / bookworm,trixie — review toolchain)"
     return 0
   fi
   local cur_version cur_sha
@@ -52,8 +60,8 @@ sync_versions_json() {
     return 0
   fi
   jq --arg m "${major_minor}" --arg v "${new_version}" --arg s "${new_sha}" \
-    '.releases[$m].version = $v | .releases[$m].sha256 = $s' "${VERSIONS_JSON}" >"${TMP_DIR}/versions.json.tmp"
-  mv "${TMP_DIR}/versions.json.tmp" "${VERSIONS_JSON}"
+    '.releases[$m].version = $v | .releases[$m].sha256 = $s' "${VERSIONS_JSON}" >"${TMP_DIR}/versions.json.tmp" || return 1
+  mv "${TMP_DIR}/versions.json.tmp" "${VERSIONS_JSON}" || return 1
   echo "synced versions.json: ${major_minor} -> ${new_version}"
 }
 
@@ -108,14 +116,20 @@ update_golang() {
       echo "golang ${major_minor} is up to date: ${cur_version}"
       continue
     fi
-    GO_CHANGED=true
-    sync_versions_json "${major_minor}" "${latest_version}" "${latest_sha}"
-    if [[ -z "${UPDATED_MAJORS}" ]]; then
-      UPDATED_MAJORS="${major_minor}"
+    # Only count majors whose versions.json sync actually succeeded, so a sync
+    # failure cannot produce a PR that claims to bump a version it did not
+    # persist (e.g. a new major whose entry could not be created).
+    if sync_versions_json "${major_minor}" "${latest_version}" "${latest_sha}"; then
+      GO_CHANGED=true
+      if [[ -z "${UPDATED_MAJORS}" ]]; then
+        UPDATED_MAJORS="${major_minor}"
+      else
+        UPDATED_MAJORS="${UPDATED_MAJORS},${major_minor}"
+      fi
+      echo -e "update golang ${major_minor}: ${cur_version}: ${cur_sha} -> ${latest_version}: ${latest_sha}"
     else
-      UPDATED_MAJORS="${UPDATED_MAJORS},${major_minor}"
+      echo "failed to sync versions.json for ${major_minor}, skipping" >&2
     fi
-    echo -e "update golang ${major_minor}: ${cur_version}: ${cur_sha} -> ${latest_version}: ${latest_sha}"
   done
 
   # update the tools Dockerfile to the newest supported major (if needed).
