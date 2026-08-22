@@ -245,6 +245,21 @@ jobs:
             done
           fi
 
+          # Comma-separated list of every bumped version (bare, e.g.
+          # "1.25.14, 1.26.7") for the PR title + summary, so a multi-major
+          # update is visible instead of only the highest one.
+          BUMPED_VERSIONS=""
+          if [ -n "$UPDATED_MAJORS" ]; then
+            for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
+              v=$(jq -r --arg m "$m" '.releases[$m].version // empty' versions.json)
+              if [ -n "$v" ] && [ "$v" != "null" ]; then
+                BUMPED_VERSIONS="${BUMPED_VERSIONS}, ${v#go}"
+              fi
+            done
+            BUMPED_VERSIONS="${BUMPED_VERSIONS#, }"
+          fi
+          [ -z "$BUMPED_VERSIONS" ] && BUMPED_VERSIONS="${GO_VER}"
+
           # Write PR body to temp file with printf/echo — NOT a heredoc: under
           # YAML block-scalar indentation the heredoc terminator carries leading
           # spaces, which neither << nor <<- can match, so the heredoc silently
@@ -253,7 +268,7 @@ jobs:
             {
               echo "## What's Changed"
               echo
-              echo "Bump Go to **${GO_VER}** and update tool dependencies."
+              echo "Bump Go to **${BUMPED_VERSIONS}** and update tool dependencies."
               echo
               echo "### Builder images"
               printf '%s\n' "${BUILDER_IMAGES}"
@@ -265,7 +280,7 @@ jobs:
               echo "1. Review and merge this PR"
               echo "2. Run the [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) (workflow_dispatch); it reads this list and builds all pending versions"
             } > /tmp/pr-body.md
-            TITLE="🤖 bump go to ${GO_VER} and tools"
+            TITLE="🤖 bump go to ${BUMPED_VERSIONS} and tools"
           else
             {
               echo "## What's Changed"

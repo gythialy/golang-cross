@@ -86,6 +86,21 @@ update_golang() {
     return 0
   fi
 
+  # Discover a newly released Go major (e.g. 1.27 became stable) that is not
+  # yet in .supported, and append it so the loop below creates its releases
+  # entry (via sync_versions_json) and bumps the tools Dockerfile to it. The
+  # newest stable version's major is always the highest supported after this.
+  local newest_stable newest_major
+  newest_stable=$(jq -r 'first(.[] | select(.stable == true) | .version)' "${golang_version_file}")
+  newest_major="${newest_stable%.*}"
+  newest_major="${newest_major#go}"
+  if [[ -n "${newest_major}" && "${newest_major}" != "null" ]] && ! jq -e --arg m "${newest_major}" '.supported | index($m)' "${VERSIONS_JSON}" >/dev/null 2>&1; then
+    jq --arg m "${newest_major}" '.supported += [$m]' "${VERSIONS_JSON}" >"${TMP_DIR}/versions.json.tmp" || return 1
+    mv "${TMP_DIR}/versions.json.tmp" "${VERSIONS_JSON}" || return 1
+    supported="${supported} ${newest_major}"
+    echo "new go major ${newest_major} discovered (${newest_stable}), added to supported"
+  fi
+
   GO_CHANGED=false
   latest_major=""
   UPDATED_MAJORS=""
