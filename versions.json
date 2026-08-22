@@ -30,8 +30,6 @@
       ]
     },
     "1.26": {
-      "version": "go1.26.6",
-      "sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89",
       "version": "go1.26.7",
       "sha256": "ffb5f8de10c62550dfddab66b36b57030721e0a44a3218e9e1181d7b59f121ca",
       "codenames": [
