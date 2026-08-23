@@ -19,8 +19,8 @@
       ]
     },
     "1.25": {
-      "version": "go1.25.13",
-      "sha256": "39042a078ea9ceebe3ecda4a7188f0f5b96e14a071d27923ba7f40b456e85ae3",
+      "version": "go1.25.14",
+      "sha256": "a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712",
       "codenames": [
         "bookworm",
         "trixie"
