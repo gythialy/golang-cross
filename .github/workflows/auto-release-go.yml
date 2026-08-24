@@ -202,6 +202,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Checkout the auto-release branch, not the trigger ref (main on
+          # schedule): the Pending releases list must read the branch's synced
+          # versions.json, not main's possibly-older copy (else a newly added
+          # major shows as "null" and bumped patches show stale versions).
+          ref: ${{ needs.detect-and-update.outputs.branch_name }}
           fetch-tags: true
           persist-credentials: false
 
