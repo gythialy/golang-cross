@@ -56,7 +56,7 @@ jobs:
               echo "PR #${PR}"
               VERSIONS=$(gh pr view "$PR" --json body --jq '.body' \
                 | sed -n '/## Pending releases/,/^## /p' \
-                | grep '^- ' | awk '{print $2}' | paste -sd, -)
+                | grep '^[[:space:]]*-' | awk '{print $2}' | paste -sd, -)
             fi
           fi
 
