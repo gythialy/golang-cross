@@ -186,7 +186,10 @@ jobs:
       ref: ${{ needs.detect-and-update.outputs.branch_name }}
       version: ${{ needs.detect-and-update.outputs.updated_majors }}
       latest_major: ${{ needs.detect-and-update.outputs.latest_major }}
-      publish_latest: ${{ needs.detect-and-update.outputs.publish_latest }}
+      # job outputs are STRINGS ('true'/'false'); reusable-workflow boolean
+      # inputs require a real boolean and reject the string form with
+      # "Unexpected value 'true'" at parse time — compare to coerce.
+      publish_latest: ${{ needs.detect-and-update.outputs.publish_latest == 'true' }}
       push_images: false
 
   create-pr:
@@ -220,31 +223,26 @@ jobs:
           BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
           TOOLS_ONLY="${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}"
 
-          # Pending releases: the majors that moved in this PR, consumed by
-          # release-golang-cross.yml to build those versions' images.
-          # tools-only rebuilds builders but does not change golang versions,
-          # so no Pending releases (nothing for the release workflow to build).
+          # NOTE: list items are built with printf so they start at column 0
+          # ("- 1.x (...)"): the release workflow extracts them with grep '^- ',
+          # and embedding them in the quoted string would inherit this script's
+          # YAML indentation (which broke extraction for PR #466).
           PENDING=""
           BUILDER_IMAGES=""
           if [ "$TOOLS_ONLY" != "true" ] && [ -n "$UPDATED_MAJORS" ]; then
             for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
               v=$(jq -r --arg m "$m" '.releases[$m].version' versions.json)
               vb="${v#go}"
-              PENDING="${PENDING}
-            - $m ($v)"
+              PENDING="${PENDING}$(printf '\n- %s (%s)' "$m" "$v")"
               # A major may list multiple builders (1.24 = osxcross + zig); emit
               # one image line per builder so the release PR body stays accurate.
               # zig majors publish the self-contained golang-cross image with a
               # -zig suffix; osxcross majors publish the golang-cross-builder base.
               for b in $(jq -r --arg m "$m" '.releases[$m].builders[]' versions.json); do
                 if [ "$b" = "zig" ]; then
-                  BUILDER_IMAGES="${BUILDER_IMAGES}
-            - \`ghcr.io/gythialy/golang-cross:v${vb}-0-bookworm-zig\`
-            - \`ghcr.io/gythialy/golang-cross:v${vb}-0-trixie-zig\`"
+                  BUILDER_IMAGES="${BUILDER_IMAGES}$(printf '\n- `ghcr.io/gythialy/golang-cross:v%s-0-bookworm-zig`\n- `ghcr.io/gythialy/golang-cross:v%s-0-trixie-zig`' "$vb" "$vb")"
                 else
-                  BUILDER_IMAGES="${BUILDER_IMAGES}
-            - \`ghcr.io/gythialy/golang-cross-builder:v${vb}-0-bookworm\`
-            - \`ghcr.io/gythialy/golang-cross-builder:v${vb}-0-trixie\`"
+                  BUILDER_IMAGES="${BUILDER_IMAGES}$(printf '\n- `ghcr.io/gythialy/golang-cross-builder:v%s-0-bookworm`\n- `ghcr.io/gythialy/golang-cross-builder:v%s-0-trixie`' "$vb" "$vb")"
                 fi
               done
             done
