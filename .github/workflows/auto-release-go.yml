@@ -44,13 +44,15 @@ jobs:
 
       - name: Run check-update.sh
         id: check
+        env:
+          TOOLS_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}
         run: |
-          EXTRA=""
-          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}" = "true" ]; then
-            EXTRA="--tools-only"
+          if [ "$TOOLS_ONLY" = "true" ]; then
             echo "manual tools-only update"
+            bash scripts/check-update.sh --tools-only | tee /tmp/check-update.log
+          else
+            bash scripts/check-update.sh | tee /tmp/check-update.log
           fi
-          bash scripts/check-update.sh $EXTRA | tee /tmp/check-update.log
           # consume machine-readable versions block printed by the script
           VERSIONS=$(sed -n '/^##VERSIONS##$/,$p' /tmp/check-update.log)
           GO_VERSION=$(echo "$VERSIONS" | grep '^GO_VERSION=' | cut -d= -f2)
@@ -61,21 +63,20 @@ jobs:
 
       - name: Compare and prepare
         id: parse
+        env:
+          TOOLS_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}
         run: |
-          # no file changes means nothing to update
-          if git diff --quiet -- Dockerfile Dockerfile.builder Dockerfile.zig versions.json; then
+          # Dockerfile.tools carries tool bumps and is committed below,
+          # so the skip check must watch it too.
+          if git diff --quiet -- Dockerfile Dockerfile.tools Dockerfile.builder Dockerfile.zig versions.json; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "No changes — nothing to do"
             exit 0
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
-          TOOLS_ONLY="${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}"
-
-          # Any supported major that moved (from check-update.sh) counts as a
-          # golang update; tools are only updated together with golang, so there
-          # is no tools-only branch — except manual tools_only dispatch, which
-          # rebuilds every supported major's builder with the new tool versions.
+          # Any moved major counts as a golang update; tools ride along.
+          # Manual tools-only dispatch rebuilds every supported major instead.
           UPDATED_MAJORS="${{ steps.check.outputs.updated_majors }}"
           if [ "$TOOLS_ONLY" = "true" ]; then
             UPDATED_MAJORS=$(jq -r '.supported | join(",")' versions.json)
@@ -117,8 +118,7 @@ jobs:
           echo "major_minor=${HIGHEST_UPDATED}" >> "$GITHUB_OUTPUT"
           echo "builder_tag=v${UPDATED_VERSION#go}-0" >> "$GITHUB_OUTPUT"
 
-          # latest tag only when the newest supported major is among the
-          # updated ones (read from versions.json supported list)
+          # latest only when the highest supported major is among the updated
           HIGHEST=$(jq -r '.supported[-1]' versions.json)
           echo "latest_major=${HIGHEST}" >> "$GITHUB_OUTPUT"
           LATEST_VERSION=$(jq -r --arg m "$HIGHEST" '.releases[$m].version // empty' versions.json)
@@ -133,13 +133,10 @@ jobs:
       - name: Sync builder/zig GO_VERSION and builder tag
         if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.go_changed == 'true'
         run: |
-          # check-update.sh already wrote the newest supported major's bare
-          # version (e.g. 1.26) into Dockerfile.tools. The builder (osxcross)
-          # tracks its own baseline (1.24), while the zig image tracks the
-          # newest major — they must NOT be synced to the same value.
+          # Dockerfile.tools carries the newest supported major; the zig
+          # image tracks it, while osxcross keeps its own older baseline.
           GO_VER=$(grep '^ARG GO_VERSION=' Dockerfile.tools | sed 's/ARG GO_VERSION=//')
 
-          # Dockerfile.zig (zig image) -> newest major
           if [ -f Dockerfile.zig ]; then
             CURRENT_ZIG_GO=$(grep '^ARG GO_VERSION=' Dockerfile.zig | sed 's/ARG GO_VERSION=//')
             if [ "$CURRENT_ZIG_GO" != "$GO_VER" ]; then
@@ -147,9 +144,8 @@ jobs:
             fi
           fi
 
-          # Dockerfile.builder (osxcross) + main Dockerfile BUILDER_TAG ->
-          # the osxcross baseline version, not the newest major (1.26 is zig
-          # and has no golang-cross-builder image).
+          # builder image + main-image BUILDER_TAG follow the osxcross
+          # baseline, NOT the newest major.
           OSXCROSS_VER=$(jq -r '[.releases | to_entries[] | select(.value.builders | index("osxcross")) | .value.version] | sort | last' versions.json)
           OSXCROSS_BARE="${OSXCROSS_VER#go}"
           if [ -n "$OSXCROSS_VER" ] && [ "$OSXCROSS_VER" != "null" ]; then
@@ -162,16 +158,17 @@ jobs:
 
       - name: Commit and push to branch
         if: steps.parse.outputs.skip == 'false'
+        env:
+          REMOTE_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # versions.json is synced by check-update.sh; include it in the bump commit.
-          # Tools only update together with golang, so there is no tools-only commit.
+          # versions.json is synced by check-update.sh — include it.
           git add Dockerfile Dockerfile.tools Dockerfile.builder Dockerfile.zig versions.json
           git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
 
           BRANCH="${{ steps.parse.outputs.branch_name }}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "HEAD:${BRANCH}"
+          git push -f "$REMOTE_URL" "HEAD:${BRANCH}"
 
   build-builder:
     needs: detect-and-update
@@ -186,15 +183,17 @@ jobs:
       ref: ${{ needs.detect-and-update.outputs.branch_name }}
       version: ${{ needs.detect-and-update.outputs.updated_majors }}
       latest_major: ${{ needs.detect-and-update.outputs.latest_major }}
-      # job outputs are STRINGS ('true'/'false'); reusable-workflow boolean
-      # inputs require a real boolean and reject the string form with
-      # "Unexpected value 'true'" at parse time — compare to coerce.
+      # job output strings must be coerced ('== true'), or the reusable
+      # workflow rejects them with "Unexpected value 'true'" at parse time.
       publish_latest: ${{ needs.detect-and-update.outputs.publish_latest == 'true' }}
       push_images: false
 
   create-pr:
     needs: [detect-and-update, build-builder]
-    if: always() && needs.detect-and-update.result == 'success' && needs.detect-and-update.outputs.skip == 'false' && (needs.detect-and-update.outputs.go_changed == 'true' || needs.detect-and-update.outputs.branch_name == 'auto-release/tools' || needs.build-builder.result == 'success')
+    # The PR is the human-review gate for images that already built and
+    # smoke-tested cleanly — a red build-builder means nothing to review,
+    # so no PR opens (no always(): default skip-on-failure is wanted here).
+    if: needs.detect-and-update.result == 'success' && needs.build-builder.result == 'success' && needs.detect-and-update.outputs.skip == 'false'
 
     runs-on: ubuntu-latest
 
@@ -217,16 +216,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPDATED_MAJORS: ${{ needs.detect-and-update.outputs.updated_majors }}
+          TOOLS_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}
         run: |
           GO_VER="${{ needs.detect-and-update.outputs.go_version }}"
           GO_CHANGED="${{ needs.detect-and-update.outputs.go_changed }}"
           BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
-          TOOLS_ONLY="${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}"
 
-          # NOTE: list items are built with printf so they start at column 0
-          # ("- 1.x (...)"): the release workflow extracts them with grep '^- ',
-          # and embedding them in the quoted string would inherit this script's
-          # YAML indentation (which broke extraction for PR #466).
+          # List items start at column 0: release-golang-cross.yml extracts
+          # them with grep '^- ' (indented items broke extraction, #466).
           PENDING=""
           BUILDER_IMAGES=""
           if [ "$TOOLS_ONLY" != "true" ] && [ -n "$UPDATED_MAJORS" ]; then
@@ -263,10 +260,7 @@ jobs:
           fi
           [ -z "$BUMPED_VERSIONS" ] && BUMPED_VERSIONS="${GO_VER}"
 
-          # Write PR body to temp file with printf/echo — NOT a heredoc: under
-          # YAML block-scalar indentation the heredoc terminator carries leading
-          # spaces, which neither << nor <<- can match, so the heredoc silently
-          # swallowed the rest of the script (title + gh pr create never ran).
+          # Body via grouped redirect — heredocs break under YAML indentation.
           if [ "$GO_CHANGED" = "true" ]; then
             {
               echo "## What's Changed"
@@ -281,7 +275,7 @@ jobs:
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. Run the [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) (workflow_dispatch); it reads this list and builds all pending versions"
+              echo "2. Run the [release workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/release-golang-cross.yml); it reads this list and builds all pending versions"
             } > /tmp/pr-body.md
             TITLE="🤖 bump go to ${BUMPED_VERSIONS} and tools"
           else
@@ -292,7 +286,7 @@ jobs:
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. Run the [release workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-golang-cross.yml) (workflow_dispatch) to publish the main \`golang-cross\` Docker image"
+              echo "2. Run the [release workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/release-golang-cross.yml) to publish the main \`golang-cross\` Docker image"
             } > /tmp/pr-body.md
             TITLE="🤖 update tool dependencies"
           fi

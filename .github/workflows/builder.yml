@@ -2,18 +2,17 @@ name: Build golang-cross-builder
 
 on:
   workflow_dispatch:
-  workflow_call:
     inputs:
       ref:
-        description: Git ref to build from (branch/tag/sha). Defaults to the triggering ref.
+        description: Git ref to build from (branch/tag/sha). Defaults to the default branch.
         type: string
         required: false
       publish_latest:
-        description: Whether to also tag the newest major's build as `latest` (defaults to true for manual dispatch, false when called from auto-release). The latest tag points at the highest supported major's trixie image (currently 1.26 zig).
+        description: Also tag the newest major's build as `latest` (default true).
         type: boolean
         required: false
       version:
-        description: Only build this Go major.minor (e.g. 1.26). Empty builds all supported versions from versions.json.
+        description: Only build these Go major.minor versions (comma-separated, e.g. 1.26 or 1.25,1.26). Empty builds all supported versions.
         type: string
         required: false
       latest_major:
@@ -21,7 +20,29 @@ on:
         type: string
         required: false
       push_images:
-        description: Push built images to the registry (false = build locally for smoke-test only). Defaults to true for manual dispatch, false when called from auto-release PR verification.
+        description: Push built images to the registry (default true; false = build locally for smoke-test only).
+        type: boolean
+        required: false
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build from (branch/tag/sha). Defaults to the triggering ref.
+        type: string
+        required: false
+      publish_latest:
+        description: Also tag the newest major's trixie build as `latest` (default true).
+        type: boolean
+        required: false
+      version:
+        description: Only build these Go major.minor versions (comma-separated, e.g. 1.26 or 1.25,1.26). Empty builds all supported versions.
+        type: string
+        required: false
+      latest_major:
+        description: Major.minor that owns the latest tag (defaults to the highest supported). Ignored when publish_latest is false.
+        type: string
+        required: false
+      push_images:
+        description: Push built images to the registry (default true; false = build locally for smoke-test only).
         type: boolean
         required: false
 
@@ -42,13 +63,9 @@ jobs:
       - name: Build matrix from versions.json
         id: set-matrix
         run: |
-          # versions.json: each supported version x codename x builder.
-          # A version may list multiple builders (1.24 ships both osxcross and
-          # zig); matrix expands the product, matrix_tools dedupes to
-          # version x codename for the shared tools image.
-          # When version input is set (auto-release), only build those versions'
-          # builder images (comma-separated list allowed, e.g. 1.24,1.25);
-          # manual dispatch builds the full matrix.
+          # Each version x codename x builder; the comma-separated version
+          # input scopes the build, matrix_tools dedupes to version x codename
+          # for the shared tools image.
           if [ -n "${{ inputs.version }}" ]; then
             MATRIX=$(jq -c --arg v "${{ inputs.version }}" '[.releases | to_entries[] | .key as $m | select(($v | split(",")) | index($m)) | .value as $v2 | $v2.codenames[] as $c | $v2.builders[] as $b | {gover: $m, go_version: $v2.version, codename: $c, builder: $b}]' versions.json)
           else
@@ -142,13 +159,18 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Sign the images
+        # Always pushed above, so a missing digest means an action regression.
         run: |
-          echo "sign ${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
-          cosign sign --yes "ghcr.io/${STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER}/golang-cross-tools@${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
+          if [ -z "$DIGEST" ]; then
+            echo "push=true but the build-push step produced no digest; refusing to sign an empty reference" >&2
+            exit 1
+          fi
+          echo "signing ghcr.io/${REPO_OWNER}/golang-cross-tools@${DIGEST}"
+          cosign sign --yes "ghcr.io/${REPO_OWNER}/golang-cross-tools@${DIGEST}"
         shell: bash
         env:
-          STEPS_BUILDPUSH_OUTPUTS_DIGEST: ${{ steps.buildpush.outputs.digest }}
-          STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          DIGEST: ${{ steps.buildpush.outputs.digest }}
+          REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
 
   build:
     needs: [load-versions, build-tools]
@@ -184,12 +206,14 @@ jobs:
 
       - name: Select Dockerfile by builder
         id: dockerfile
+        env:
+          BUILDER: ${{ matrix.builder }}
         run: |
           # strip leading "go" from version for golang official image tags
           GO_BARE="${{ matrix.go_version }}"
           GO_BARE="${GO_BARE#go}"
           echo "go_bare=${GO_BARE}" >> "$GITHUB_OUTPUT"
-          if [ "${{ matrix.builder }}" = "zig" ]; then
+          if [ "$BUILDER" = "zig" ]; then
             echo "file=Dockerfile.zig" >> "$GITHUB_OUTPUT"
             # zig builds publish to the main golang-cross repo, tag suffixed with -zig
             echo "image=golang-cross" >> "$GITHUB_OUTPUT"
@@ -206,7 +230,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/${{ steps.dockerfile.outputs.image }}
           tags: |
-            type=raw,value=latest,enable=${{ (inputs.publish_latest == true || github.event_name == 'workflow_dispatch') && matrix.gover == needs.load-versions.outputs.latest_major && matrix.codename == 'trixie' }}
+            type=raw,value=latest,enable=${{ inputs.publish_latest != false && matrix.gover == needs.load-versions.outputs.latest_major && matrix.codename == 'trixie' }}
             type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-0-${{ matrix.codename }}${{ steps.dockerfile.outputs.tag_suffix }}
             type=raw,value=${{ matrix.gover }}${{ steps.dockerfile.outputs.tag_suffix }}
 
@@ -223,13 +247,14 @@ jobs:
         with:
           context: .
           file: ${{ steps.dockerfile.outputs.file }}
-          # push_images=false (PR smoke-test) still needs the image in the
-          # local daemon for docker run; push=true implies load via registry
+          # Push depends ONLY on this boolean input (default true).
+          # github.event_name inside a reusable workflow is the CALLER's
+          # trigger — conditioning on it silently disabled pushing when the
+          # release ran on push events (empty-digest cosign failure).
           load: ${{ inputs.push_images == false }}
-          push: ${{ github.event_name == 'workflow_dispatch' && inputs.push_images != false || github.event_name == 'workflow_call' && inputs.push_images == true }}
-          # zig is verified multi-arch (amd64+arm64); osxcross stays amd64-only
-          # until its cross toolchain is verified on arm64 hosts. PR smoke-test
-          # (push_images=false) loads a single amd64 image into the local daemon.
+          push: ${{ inputs.push_images != false }}
+          # zig ships multi-arch; osxcross stays amd64-only. Local builds
+          # (push_images=false) load a single amd64 image for docker run.
           platforms: ${{ matrix.builder == 'zig' && inputs.push_images != false && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
             GO_VERSION=${{ steps.dockerfile.outputs.go_bare }}
@@ -247,18 +272,23 @@ jobs:
             ${{ matrix.builder == 'osxcross' && format('type=registry,ref=ghcr.io/{0}/golang-cross:buildcache-osxcross-{1},mode=max', steps.get_repo_owner.outputs.repo_owner, matrix.codename) || 'type=gha,mode=max' }}
 
       - name: Sign the images
+        # Nothing is published when building locally for the PR smoke-test.
+        if: inputs.push_images != false
         run: |
-          echo "sign ${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
-          cosign sign --yes "ghcr.io/${STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER}/${{ steps.dockerfile.outputs.image }}@${STEPS_BUILDPUSH_OUTPUTS_DIGEST}"
+          if [ -z "$DIGEST" ]; then
+            echo "push=true but the build-push step produced no digest; refusing to sign an empty reference" >&2
+            exit 1
+          fi
+          echo "signing ghcr.io/${REPO_OWNER}/${IMAGE_NAME}@${DIGEST}"
+          cosign sign --yes "ghcr.io/${REPO_OWNER}/${IMAGE_NAME}@${DIGEST}"
         shell: bash
         env:
-          STEPS_BUILDPUSH_OUTPUTS_DIGEST: ${{ steps.buildpush.outputs.digest }}
-          STEPS_GET_REPO_OWNER_OUTPUTS_REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          DIGEST: ${{ steps.buildpush.outputs.digest }}
+          REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          IMAGE_NAME: ${{ steps.dockerfile.outputs.image }}
 
-      # PR-stage zig smoke test. The zig image is self-contained (FROM the
-      # tools base), so it is built here and smoke-tested in the SAME job —
-      # the image was --load'ed into the local daemon and docker run sees it.
-      # (A separate job cannot pull it: nothing is pushed in PR mode.)
+      # PR-stage zig smoke test runs HERE: the image was --load'ed into this
+      # job's daemon and nothing was pushed, so no other job can pull it.
       - name: Smoke-test zig image (PR verification)
         if: matrix.builder == 'zig' && inputs.push_images == false && matrix.codename == 'trixie'
         run: |
