@@ -21,6 +21,7 @@ jobs:
       - name: Run OS compat check
         id: check
         continue-on-error: true
+        # tee keeps the log for the issue body below.
         run: |
           bash scripts/check-os-compat.sh --verbose 2>&1 | tee /tmp/compat.log
 
@@ -28,25 +29,27 @@ jobs:
         if: steps.check.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          cat > /tmp/compat-log-body.md <<'ISSUE_EOF'
-          ## OS compatibility drift detected
-
-          The `versions.json` matrix references golang official image tags that no longer exist on Docker Hub (or new combinations are available). This breaks the builder matrix.
-
-          Details from the check:
-
-          ```
-          ISSUE_EOF
-          cat /tmp/compat.log >> /tmp/compat-log-body.md
-          cat >> /tmp/compat-log-body.md <<'ISSUE_EOF'
-          ```
-
-          ### How to fix
-          Update `codenames` in `versions.json` for the affected Go versions, then run the `builder.yml` workflow to rebuild.
-          ISSUE_EOF
+          {
+            echo "## OS compatibility drift detected"
+            echo
+            echo 'The `versions.json` matrix references golang official image tags that no longer exist on Docker Hub (or new combinations are available). This breaks the builder matrix.'
+            echo
+            echo "Details from the check:"
+            echo
+            echo '```'
+            cat /tmp/compat.log
+            echo '```'
+            echo
+            echo "### How to fix"
+            echo 'Update `codenames` in `versions.json` for the affected Go versions, then run the `builder.yml` workflow to rebuild.'
+            echo
+            echo "[Workflow run](${SERVER_URL}/${REPOSITORY}/actions/runs/${RUN_ID})"
+          } > /tmp/compat-log-body.md
           gh issue create \
             --title "🤖 OS compatibility drift in versions.json" \
             --body-file /tmp/compat-log-body.md \
             --assignee gythialy 2>&1 || true
-          exit 0

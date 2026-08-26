@@ -35,14 +35,14 @@ jobs:
         id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSIONS: ${{ inputs.versions }}
         run: |
-          # 1) explicit input wins (manual dispatch)
-          # 2) release tag -> that single major (backward compat)
-          # 3) push to main -> read Pending releases from the latest merged
-          #    auto-release PR body (skip when there is none)
-          VERSIONS="${{ inputs.versions }}"
+          # Priority: dispatch input > release tag > Pending releases in the
+          # latest merged auto-release PR body (push events skip when none).
+          VERSIONS="$INPUT_VERSIONS"
 
-          if [ -z "$VERSIONS" ] && [ "${{ github.event_name }}" = "release" ]; then
+          if [ -z "$VERSIONS" ] && [ "$EVENT_NAME" = "release" ]; then
             MAJOR_MINOR="${GITHUB_REF_NAME#v}"; MAJOR_MINOR="${MAJOR_MINOR%.*}"
             echo "Release tag: ${GITHUB_REF_NAME} (major.minor: ${MAJOR_MINOR})"
             VERSIONS="$MAJOR_MINOR"
@@ -60,9 +60,14 @@ jobs:
             fi
           fi
 
+          # Tolerate whitespace in the dispatch input ("1.24, 1.25"): the
+          # matrix jq splits on bare commas, so a stray space would leave a
+          # valid major silently unmatched.
+          VERSIONS="${VERSIONS// /}"
+
           echo "Versions to release: ${VERSIONS:-<none>}"
           if [ -z "$VERSIONS" ]; then
-            if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "$EVENT_NAME" = "push" ]; then
               echo "No Pending releases in the latest merged auto-release PR; nothing to do"
               echo "skip=true" >> "$GITHUB_OUTPUT"
             else
@@ -72,6 +77,18 @@ jobs:
             exit 0
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          # Fail loudly when a requested major has no versions.json entry.
+          # The matrix jq silently drops unknown majors, so a stale Pending
+          # list (or a typo in the dispatch input) would otherwise skip that
+          # version's images forever while the workflow stays green.
+          MISSING=$(echo "$VERSIONS" | tr ',' '\n' | while read -r m; do
+            jq -e --arg m "$m" '.releases[$m]' versions.json >/dev/null 2>&1 || echo "$m"
+          done)
+          if [ -n "$MISSING" ]; then
+            echo "No versions.json entry for requested release(s): $(echo "$MISSING" | paste -sd, -)"
+            exit 1
+          fi
 
           MATRIX=$(jq -c --arg v "$VERSIONS" \
             '[.releases | to_entries[]
@@ -84,6 +101,8 @@ jobs:
                  builder: $b, codename: $c}]' versions.json)
 
           if [[ "$MATRIX" == "[]" || -z "$MATRIX" ]]; then
+            # Defensive: the per-major check above should make this
+            # unreachable, but never build an empty matrix.
             echo "No version entries in versions.json for: ${VERSIONS}"
             exit 1
           fi
@@ -99,8 +118,8 @@ jobs:
   build-builder:
     needs: resolve
     if: needs.resolve.outputs.skip != 'true'
-    # PR stage did not push builder images; publish them now so the main
-    # image build below can FROM golang-cross-builder:<tag>
+    # Publish the builder images the PR stage built locally: the main-image
+    # FROM below needs them in the registry.
     uses: ./.github/workflows/builder.yml
     with:
       ref: main
@@ -111,9 +130,8 @@ jobs:
 
   release:
     needs: [resolve, build-builder]
-    # Only the osxcross main image needs a build here; zig is self-contained
-    # and already built + tagged by builder.yml's build job. Skip entirely
-    # when no osxcross version is in this release (e.g. a zig-only release).
+    # Only the osxcross main image builds here (zig is self-contained and
+    # already published by builder.yml); skip when this release has none.
     if: needs.resolve.outputs.skip != 'true' && needs.resolve.outputs.matrix_osxcross != '[]'
     strategy:
       matrix:
@@ -145,8 +163,7 @@ jobs:
           GO_VERSION="${{ matrix.version }}"
           echo "go_version_bare=${GO_VERSION#go}" >> "$GITHUB_OUTPUT"
           echo "builder_tag=v${GO_VERSION#go}-0" >> "$GITHUB_OUTPUT"
-          # This job only builds the osxcross main image (zig is excluded from
-          # the matrix), so the Dockerfile is fixed.
+          # Only the osxcross main image builds here, so the Dockerfile is fixed.
           echo "dockerfile=Dockerfile" >> "$GITHUB_OUTPUT"
 
       - name: Docker meta
@@ -159,7 +176,6 @@ jobs:
             type=raw,value=${{ matrix.major }}
 
       - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -169,9 +185,8 @@ jobs:
       - name: Prepare build args
         id: args
         run: |
-          # Dockerfile.zig takes a bare GO_VERSION (no "go" prefix); the
-          # osxcross Dockerfile only takes BUILDER_TAG + OS_CODENAME (Go
-          # already comes from the golang-cross-builder base image).
+          # The osxcross Dockerfile takes BUILDER_TAG + OS_CODENAME only;
+          # Go comes preinstalled in the golang-cross-builder base image.
           echo "go_arg=${{ steps.params.outputs.go_version_bare }}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
@@ -180,7 +195,7 @@ jobs:
         with:
           context: .
           file: ${{ steps.params.outputs.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           load: true
           build-args: |
             OS_CODENAME=${{ matrix.codename }}
@@ -193,11 +208,16 @@ jobs:
 
       - name: Sign the images
         run: |
-          echo "sign ${{ steps.buildpush.outputs.digest }}"
-          cosign sign --yes "ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross@${{ steps.buildpush.outputs.digest }}"
+          if [ -z "$DIGEST" ]; then
+            echo "push=true but the build-push step produced no digest; refusing to sign an empty reference" >&2
+            exit 1
+          fi
+          echo "signing ghcr.io/${REPO_OWNER}/golang-cross@${DIGEST}"
+          cosign sign --yes "ghcr.io/${REPO_OWNER}/golang-cross@${DIGEST}"
         shell: bash
         env:
-          DOCKER_PASSWD: ${{ secrets.GITHUB_TOKEN }}
+          DIGEST: ${{ steps.buildpush.outputs.digest }}
+          REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
 
       # Smoke-test the published osxcross image against the sqlite example.
       # (zig is smoke-tested in builder.yml's build job during PR verification.)
