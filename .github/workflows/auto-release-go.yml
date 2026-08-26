@@ -26,6 +26,7 @@ jobs:
 
     outputs:
       go_version: ${{ steps.parse.outputs.go_version }}
+      bumped_versions: ${{ steps.parse.outputs.bumped_versions }}
       major_minor: ${{ steps.parse.outputs.major_minor }}
       updated_majors: ${{ steps.parse.outputs.updated_majors }}
       latest_major: ${{ steps.parse.outputs.latest_major }}
@@ -128,6 +129,16 @@ jobs:
           else
             echo "publish_latest=false" >> "$GITHUB_OUTPUT"
           fi
+
+          # Every bumped major's full version, comma-separated — the single
+          # source consumed by BOTH the bump commit message and the PR title,
+          # so a multi-major bump reads identically in both places.
+          BUMPED=""
+          for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
+            v=$(jq -r --arg m "$m" '.releases[$m].version // empty' versions.json)
+            [ -n "$v" ] && BUMPED="${BUMPED}, ${v#go}"
+          done
+          echo "bumped_versions=${BUMPED#, }" >> "$GITHUB_OUTPUT"
           echo "Updated majors: ${UPDATED_MAJORS}"
 
       - name: Sync builder/zig GO_VERSION and builder tag
@@ -160,15 +171,21 @@ jobs:
         if: steps.parse.outputs.skip == 'false'
         env:
           REMOTE_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          BUMPED_VERSIONS: ${{ steps.parse.outputs.bumped_versions }}
+          BRANCH: ${{ steps.parse.outputs.branch_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # versions.json is synced by check-update.sh — include it.
           git add Dockerfile Dockerfile.tools Dockerfile.builder Dockerfile.zig versions.json
-          git commit -m "🤖 bump go to ${{ steps.parse.outputs.go_version }} and tools"
-
-          BRANCH="${{ steps.parse.outputs.branch_name }}"
-          git push -f "$REMOTE_URL" "HEAD:${BRANCH}"
+          # Same aggregation the PR title uses (bumped_versions), so a
+          # multi-major bump never reads as a single-version bump here.
+          if [ -n "$BUMPED_VERSIONS" ]; then
+            git commit -m "🤖 bump go to $BUMPED_VERSIONS and tools"
+          else
+            git commit -m "🤖 update tool dependencies"
+          fi
+          git push -f "$REMOTE_URL" "HEAD:$BRANCH"
 
   build-builder:
     needs: detect-and-update
@@ -216,6 +233,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPDATED_MAJORS: ${{ needs.detect-and-update.outputs.updated_majors }}
+          BUMPED_VERSIONS: ${{ needs.detect-and-update.outputs.bumped_versions }}
           TOOLS_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}
         run: |
           GO_VER="${{ needs.detect-and-update.outputs.go_version }}"
@@ -245,19 +263,8 @@ jobs:
             done
           fi
 
-          # Comma-separated list of every bumped version (bare, e.g.
-          # "1.25.14, 1.26.7") for the PR title + summary, so a multi-major
-          # update is visible instead of only the highest one.
-          BUMPED_VERSIONS=""
-          if [ -n "$UPDATED_MAJORS" ]; then
-            for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
-              v=$(jq -r --arg m "$m" '.releases[$m].version // empty' versions.json)
-              if [ -n "$v" ] && [ "$v" != "null" ]; then
-                BUMPED_VERSIONS="${BUMPED_VERSIONS}, ${v#go}"
-              fi
-            done
-            BUMPED_VERSIONS="${BUMPED_VERSIONS#, }"
-          fi
+          # Aggregated once in detect-and-update (bumped_versions) and used
+          # verbatim by the bump commit message too. Fallback: tools-only.
           [ -z "$BUMPED_VERSIONS" ] && BUMPED_VERSIONS="${GO_VER}"
 
           # Body via grouped redirect — heredocs break under YAML indentation.
