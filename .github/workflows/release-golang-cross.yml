@@ -37,6 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
           INPUT_VERSIONS: ${{ inputs.versions }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Priority: dispatch input > release tag > Pending releases in the
           # latest merged auto-release PR body (push events skip when none).
@@ -82,11 +83,12 @@ jobs:
           # The matrix jq silently drops unknown majors, so a stale Pending
           # list (or a typo in the dispatch input) would otherwise skip that
           # version's images forever while the workflow stays green.
-          MISSING=$(echo "$VERSIONS" | tr ',' '\n' | while read -r m; do
-            jq -e --arg m "$m" '.releases[$m]' versions.json >/dev/null 2>&1 || echo "$m"
-          done)
+          MISSING=""
+          for m in $(echo "$VERSIONS" | tr ',' '\n'); do
+            jq -e --arg m "$m" '.releases[$m]' versions.json >/dev/null 2>&1 || MISSING="${MISSING}${m},"
+          done
           if [ -n "$MISSING" ]; then
-            echo "No versions.json entry for requested release(s): $(echo "$MISSING" | paste -sd, -)"
+            echo "No versions.json entry for requested release(s): ${MISSING%,}"
             exit 1
           fi
 
@@ -113,6 +115,47 @@ jobs:
           echo "matrix_osxcross=${MATRIX_OSXCROSS}" >> "$GITHUB_OUTPUT"
           echo "versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
           echo "latest_major=$(jq -r '.supported[-1]' versions.json)" >> "$GITHUB_OUTPUT"
+
+          # Push-triggered runs re-read the Pending list of the latest merged
+          # bot PR on EVERY push to main, and that list lives in a merged PR
+          # body forever — without this guard any later hotfix merge would
+          # rebuild everything it names. Skip only when every expected final
+          # tag already exists in ghcr (a partial release still reruns);
+          # explicit dispatch always rebuilds. A failed tag listing aborts
+          # instead of falling back to a blind full rebuild.
+          if [ "$EVENT_NAME" = "push" ]; then
+            chmod +x scripts/registry-tags.sh
+            fetch_tags() {
+              local out
+              out=$(bash scripts/registry-tags.sh "$REPO_OWNER" "$1") || {
+                echo "ghcr tag listing failed for $1; refusing to decide blindly" >&2
+                exit 1
+              }
+              printf '%s\n' "$out" | sort -u
+            }
+            TOOLS_TAGS=$(fetch_tags golang-cross-tools)
+            MAIN_ZIG_TAGS=$(fetch_tags golang-cross)
+            BUILDER_TAGS=$(fetch_tags golang-cross-builder)
+            MISSING=$(echo "$MATRIX" | jq -r '.[] | [.major, .version, .codename, .builder] | @tsv' |
+              while read -r major version codename builder; do
+                vb="${version#go}"
+                case "$builder" in
+                  zig)      want="v${vb}-0-${codename}-zig"; pool="$MAIN_ZIG_TAGS" ;;
+                  osxcross) want="v${vb}-0-${codename}";      pool="$BUILDER_TAGS" ;;
+                esac
+                grep -Fxq -- "$want" <<<"$pool" || echo "${major}: ${want}"
+                tools="v${vb}-0-${codename}"
+                grep -Fxq -- "$tools" <<<"$TOOLS_TAGS" || echo "${major}: golang-cross-tools:${tools}"
+              done)
+            if [ -z "$MISSING" ]; then
+              echo "All requested images already published; nothing to rebuild"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Missing images, rebuilding:"
+            echo "$MISSING"
+          fi
+
           echo "Matrix: ${MATRIX}"
 
   build-builder:
@@ -155,7 +198,9 @@ jobs:
 
       - name: Get Repo Owner
         id: get_repo_owner
-        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "repo_owner=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Prepare version params
         id: params
@@ -223,8 +268,11 @@ jobs:
       # (zig is smoke-tested in builder.yml's build job during PR verification.)
       - name: Test sqlite-example (cgo cross-compile smoke)
         if: matrix.codename == 'trixie'
+        env:
+          GO_BARE: ${{ steps.params.outputs.go_version_bare }}
+          REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
         run: |
           cd example/sqlite-example
-          IMAGE="ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:v${{ steps.params.outputs.go_version_bare }}-0-trixie"
+          IMAGE="ghcr.io/${REPO_OWNER}/golang-cross:v${GO_BARE}-0-trixie"
           echo "testing with ${IMAGE}"
           make smoke-test IMAGE="${IMAGE}" CONFIG=".goreleaser.yml"
