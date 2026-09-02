@@ -20,7 +20,7 @@
 
 # NOTE: GO_VERSION is WITHOUT the "go" prefix. It selects the shared
 # golang-cross-tools base image tag (v<GO_VERSION>-0-<OS_CODENAME>).
-ARG GO_VERSION=1.27.0
+ARG GO_VERSION=1.27.1
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
 
