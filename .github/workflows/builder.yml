@@ -1,6 +1,12 @@
 name: Build golang-cross-builder
 
-on:
+# Deliberately no `concurrency:` here. This is a reusable workflow invoked by
+# both auto-release-go.yml (PR-stage, push_images: false) and
+# release-golang-cross.yml (publishing). `github.workflow` inside a called
+# workflow resolves to the CALLER's name, so a group here would either
+# duplicate the caller's own concurrency group or serialize two unrelated
+# callers behind each other. Each caller sets its own group instead.
+on:  # zizmor: ignore[concurrency-limits]
   workflow_dispatch:
     inputs:
       ref:
@@ -51,6 +57,10 @@ permissions: {}
 jobs:
   load-versions:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       matrix_tools: ${{ steps.set-matrix.outputs.matrix_tools }}
@@ -79,15 +89,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Build matrix from versions.json
         id: set-matrix
+        env:
+          VERSION: ${{ inputs.version }}
+          LATEST_MAJOR: ${{ inputs.latest_major }}
         run: |
           # Each version x codename x builder; the comma-separated version
           # input scopes the build, matrix_tools dedupes to version x codename
           # for the shared tools image.
-          if [ -n "${{ inputs.version }}" ]; then
-            MATRIX=$(jq -c --arg v "${{ inputs.version }}" '[.releases | to_entries[] | .key as $m | select(($v | split(",")) | index($m)) | .value as $v2 | $v2.codenames[] as $c | $v2.builders[] as $b | {gover: $m, go_version: $v2.version, codename: $c, builder: $b}]' versions.json)
+          if [ -n "$VERSION" ]; then
+            MATRIX=$(jq -c --arg v "$VERSION" '[.releases | to_entries[] | .key as $m | select(($v | split(",")) | index($m)) | .value as $v2 | $v2.codenames[] as $c | $v2.builders[] as $b | {gover: $m, go_version: $v2.version, codename: $c, builder: $b}]' versions.json)
           else
             MATRIX=$(jq -c '[.releases | to_entries[] | .key as $m | .value as $v | $v.codenames[] as $c | $v.builders[] as $b | {gover: $m, go_version: $v.version, codename: $c, builder: $b}]' versions.json)
           fi
@@ -99,8 +113,8 @@ jobs:
       - name: Resolve latest major
         id: latest
         run: |
-          if [ -n "${{ inputs.latest_major }}" ]; then
-            echo "major=${{ inputs.latest_major }}" >> "$GITHUB_OUTPUT"
+          if [ -n "$LATEST_MAJOR" ]; then
+            echo "major=$LATEST_MAJOR" >> "$GITHUB_OUTPUT"
           else
             echo "major=$(jq -r '.supported[-1]' versions.json)" >> "$GITHUB_OUTPUT"
           fi
@@ -120,8 +134,8 @@ jobs:
     continue-on-error: false
 
     permissions:
-      id-token: write
-      packages: write
+      id-token: write  # write: keyless cosign signing of the tools base image
+      packages: write  # write: pushes ghcr.io/<owner>/golang-cross-tools
       contents: read
 
     steps:
@@ -137,14 +151,17 @@ jobs:
 
       - name: Get Repo Owner
         id: get_repo_owner
-        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "repo_owner=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Resolve tools tag
         id: tools
+        env:
+          GO_VERSION: ${{ matrix.go_version }}
         run: |
           # strip leading "go" from version for the tools image tag
-          GO_BARE="${{ matrix.go_version }}"
-          GO_BARE="${GO_BARE#go}"
+          GO_BARE="${GO_VERSION#go}"
           echo "go_bare=${GO_BARE}" >> "$GITHUB_OUTPUT"
 
       - name: Docker meta
@@ -202,8 +219,8 @@ jobs:
     continue-on-error: false
 
     permissions:
-      id-token: write
-      packages: write
+      id-token: write  # write: keyless cosign signing of the builder/zig images
+      packages: write  # write: pushes golang-cross / golang-cross-builder (skipped when push_images is false, but the grant has to cover the pushing case)
       contents: read
 
     env:
@@ -222,16 +239,18 @@ jobs:
 
       - name: Get Repo Owner
         id: get_repo_owner
-        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "repo_owner=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Select Dockerfile by builder
         id: dockerfile
         env:
           BUILDER: ${{ matrix.builder }}
+          GO_VERSION: ${{ matrix.go_version }}
         run: |
           # strip leading "go" from version for golang official image tags
-          GO_BARE="${{ matrix.go_version }}"
-          GO_BARE="${GO_BARE#go}"
+          GO_BARE="${GO_VERSION#go}"
           echo "go_bare=${GO_BARE}" >> "$GITHUB_OUTPUT"
           if [ "$BUILDER" = "zig" ]; then
             echo "file=Dockerfile.zig" >> "$GITHUB_OUTPUT"
@@ -322,8 +341,11 @@ jobs:
       # job's daemon and nothing was pushed, so no other job can pull it.
       - name: Smoke-test zig image (PR verification)
         if: matrix.builder == 'zig' && inputs.push_images == false && matrix.codename == 'trixie'
+        env:
+          REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          GO_BARE: ${{ steps.dockerfile.outputs.go_bare }}
         run: |
-          IMAGE="ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross:v${{ steps.dockerfile.outputs.go_bare }}-0-trixie-zig"
+          IMAGE="ghcr.io/${REPO_OWNER}/golang-cross:v${GO_BARE}-0-trixie-zig"
           echo "smoke-testing ${IMAGE}"
           cd example/sqlite-example && make smoke-test IMAGE="${IMAGE}" CONFIG=.goreleaser.zig.yml
           cd ../openssl-example && make smoke-test IMAGE="${IMAGE}"

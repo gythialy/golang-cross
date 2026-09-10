@@ -12,17 +12,22 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write
+# Two runs would race on the same auto-release branch and force-push over each
+# other, so serialize; queue rather than cancel so a partly-committed bump is
+# never abandoned.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+# Default to nothing; every job below opts in to exactly what it needs.
+permissions: {}
 
 jobs:
   detect-and-update:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
+      contents: write  # write: commits the version bump and force-pushes the auto-release branch
 
     outputs:
       go_version: ${{ steps.parse.outputs.go_version }}
@@ -66,6 +71,8 @@ jobs:
         id: parse
         env:
           TOOLS_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}
+          CHECK_UPDATED_MAJORS: ${{ steps.check.outputs.updated_majors }}
+          CHECK_GO_VERSION: ${{ steps.check.outputs.go_version }}
         run: |
           # Dockerfile.tools carries tool bumps and is committed below,
           # so the skip check must watch it too.
@@ -78,7 +85,7 @@ jobs:
 
           # Any moved major counts as a golang update; tools ride along.
           # Manual tools-only dispatch rebuilds every supported major instead.
-          UPDATED_MAJORS="${{ steps.check.outputs.updated_majors }}"
+          UPDATED_MAJORS="$CHECK_UPDATED_MAJORS"
           if [ "$TOOLS_ONLY" = "true" ]; then
             UPDATED_MAJORS=$(jq -r '.supported | join(",")' versions.json)
             echo "tools-only: rebuild all supported majors: ${UPDATED_MAJORS}"
@@ -99,7 +106,7 @@ jobs:
 
           if [ -z "$UPDATED_MAJORS" ]; then
             # fallback: the newest major moved even if the script did not report
-            NEW_GO="${{ steps.check.outputs.go_version }}"
+            NEW_GO="$CHECK_GO_VERSION"
             UPDATED_MAJORS="${NEW_GO#go}"; UPDATED_MAJORS="${UPDATED_MAJORS%.*}"
           fi
           echo "go_changed=true" >> "$GITHUB_OUTPUT"
@@ -188,6 +195,12 @@ jobs:
           git push -f "$REMOTE_URL" "HEAD:$BRANCH"
 
   build-builder:
+    # Must cover what builder.yml's own jobs request for themselves.
+    permissions:
+      contents: read
+      packages: write  # write: build-tools pushes the shared base image even in this PR-stage build (push_images: false only gates the final images)
+      id-token: write  # write: keyless cosign signing of that base image
+
     needs: detect-and-update
     if: needs.detect-and-update.outputs.skip == 'false' && (needs.detect-and-update.outputs.go_changed == 'true' || needs.detect-and-update.outputs.branch_name == 'auto-release/tools')
     # reuse the single builder implementation (versions.json matrix, dual builder)
@@ -195,7 +208,7 @@ jobs:
     # when the newest supported major (1.26) is among them
     # push_images=false: PR stage builds locally for smoke-test, does NOT
     # publish to the registry; the release workflow publishes after merge
-    uses: ./.github/workflows/builder.yml
+    uses: $/.github/workflows/builder.yml
     with:
       ref: ${{ needs.detect-and-update.outputs.branch_name }}
       version: ${{ needs.detect-and-update.outputs.updated_majors }}
@@ -215,8 +228,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read  # read-only: this job checks out but never commits or pushes
+      pull-requests: write  # write: opens/edits the auto-release PR and assigns a reviewer
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -235,11 +248,10 @@ jobs:
           UPDATED_MAJORS: ${{ needs.detect-and-update.outputs.updated_majors }}
           BUMPED_VERSIONS: ${{ needs.detect-and-update.outputs.bumped_versions }}
           TOOLS_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.tools_only == true }}
+          GO_VER: ${{ needs.detect-and-update.outputs.go_version }}
+          GO_CHANGED: ${{ needs.detect-and-update.outputs.go_changed }}
+          BRANCH: ${{ needs.detect-and-update.outputs.branch_name }}
         run: |
-          GO_VER="${{ needs.detect-and-update.outputs.go_version }}"
-          GO_CHANGED="${{ needs.detect-and-update.outputs.go_changed }}"
-          BRANCH="${{ needs.detect-and-update.outputs.branch_name }}"
-
           # List items start at column 0: release-golang-cross.yml extracts
           # them with grep '^- ' (indented items broke extraction, #466).
           PENDING=""

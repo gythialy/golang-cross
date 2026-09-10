@@ -6,17 +6,25 @@ on:
     - cron: '0 8 * * 1'
   workflow_dispatch:
 
+# Read-only check that files an issue on drift; concurrent runs would file
+# duplicates, and the newest result is the only one worth having.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      issues: write
+      issues: write  # write: files the drift issue below
       contents: read
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Run OS compat check
         id: check

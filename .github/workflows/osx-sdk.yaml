@@ -18,6 +18,11 @@ on:
         type: string
         default: '["macos-13"]'
 
+# Publishes the osx-sdk image; never cancel a push mid-flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
@@ -46,6 +51,9 @@ jobs:
           repository: "tpoechtrager/osxcross"
           ref: "27d21e4977c9751d01199c7a226a6faf494c3dd9"
           path: "osxcross"
+          # This checks out a third-party repo whose script we then execute;
+          # never leave our token in its .git/config.
+          persist-credentials: false
 
       - name: Build OSX SDK
         shell: bash
@@ -92,13 +100,15 @@ jobs:
 
     permissions:
       contents: read
-      packages: write
+      packages: write  # write: pushes ghcr.io/<owner>/osx-sdk
 
     env:
       DOCKER_REGISTRY: "ghcr.io"
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Compute image tag
         id: compute_tag
@@ -120,7 +130,9 @@ jobs:
 
       - name: Get Repo Owner
         id: get_repo_owner
-        run: echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "repo_owner=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Prepare SDK_FILE build arg
         id: args

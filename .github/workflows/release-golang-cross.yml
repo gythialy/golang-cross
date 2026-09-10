@@ -23,10 +23,16 @@ on:
     types:
       - created
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write
+# One publish at a time per release tag, and never cancel one in flight: a
+# half-pushed manifest can leave a tag pointing at nothing, and two concurrent
+# runs for the same tag would race to push the same image tags — the digest
+# orphaning this workflow was restructured to prevent. Grouped by ref, so
+# releasing v1.26.8-0 and v1.27.1-0 in parallel still works.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   resolve:
@@ -37,8 +43,14 @@ jobs:
       latest_major: ${{ steps.resolve.outputs.latest_major }}
       versions: ${{ steps.resolve.outputs.versions }}
       skip: ${{ steps.resolve.outputs.skip }}
+
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Resolve versions to release
         id: resolve
@@ -259,11 +271,15 @@ jobs:
           echo "Matrix: ${MATRIX}"
 
   build-builder:
+    permissions:
+      contents: read
+      packages: write  # write: builder.yml publishes the base images the main image builds FROM
+
     needs: resolve
     if: needs.resolve.outputs.skip != 'true'
     # Publish the builder images the PR stage built locally: the main-image
     # FROM below needs them in the registry.
-    uses: ./.github/workflows/builder.yml
+    uses: $/.github/workflows/builder.yml
     with:
       # Build from the ref that triggered this release, NOT from main. These
       # images are signed with an identity of @refs/tags/vX.Y.Z-N, so building
@@ -287,8 +303,8 @@ jobs:
         include: ${{ fromJson(needs.resolve.outputs.matrix_osxcross) }}
 
     permissions:
-      id-token: write
-      packages: write
+      id-token: write  # write: keyless cosign signing of the published main image
+      packages: write  # write: pushes ghcr.io/<owner>/golang-cross
       contents: read
 
     runs-on: ubuntu-latest
@@ -296,6 +312,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.0.1
 
@@ -310,8 +328,10 @@ jobs:
 
       - name: Prepare version params
         id: params
+        env:
+          MATRIX_VERSION: ${{ matrix.version }}
         run: |
-          GO_VERSION="${{ matrix.version }}"
+          GO_VERSION="$MATRIX_VERSION"
           echo "go_version_bare=${GO_VERSION#go}" >> "$GITHUB_OUTPUT"
           echo "builder_tag=v${GO_VERSION#go}-0" >> "$GITHUB_OUTPUT"
           # Only the osxcross main image builds here, so the Dockerfile is fixed.
@@ -335,10 +355,12 @@ jobs:
 
       - name: Prepare build args
         id: args
+        env:
+          GO_BARE: ${{ steps.params.outputs.go_version_bare }}
         run: |
           # The osxcross Dockerfile takes BUILDER_TAG + OS_CODENAME only;
           # Go comes preinstalled in the golang-cross-builder base image.
-          echo "go_arg=${{ steps.params.outputs.go_version_bare }}" >> "$GITHUB_OUTPUT"
+          echo "go_arg=${GO_BARE}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0

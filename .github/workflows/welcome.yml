@@ -10,6 +10,11 @@ on:
     types:
       - opened
 
+# One greeting per issue/PR; a superseded run has nothing left to say.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -17,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      issues: write
-      pull-requests: write
+      issues: write  # write: posts the first-interaction comment on a new issue
+      pull-requests: write  # write: posts the first-interaction comment on a new PR
       contents: read
 
     steps:

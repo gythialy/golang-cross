@@ -9,6 +9,11 @@ on:
     # without this, the LRU auto-eviction can kill the active main cache).
     - cron: '0 0 * * *'
 
+# Cache pruning is idempotent, so a newer sweep can safely replace an older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -16,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      actions: write
+      actions: write  # write: deletes Actions cache entries (the whole point of this workflow)
 
     steps:
       # Check out the default branch explicitly: on a closed PR the merge ref
@@ -24,6 +29,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
       - name: Prune dead and stale caches
         env:
