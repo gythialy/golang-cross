@@ -15,6 +15,11 @@ Two toolchains in one repo; `latest` points at the newest Go's **zig** image.
 Go 1.24 ships **both** (osxcross + zig); the zig variant is recommended —
 smaller, faster, native arm64. See the migration note below.
 
+Patch-level tags below are examples, not a fixed list — `versions.json` holds
+the currently supported majors, and the [package
+tags](https://github.com/gythialy/golang-cross/pkgs/container/golang-cross) are
+the source of truth for what exists.
+
 - `golang-cross` — zig toolchain (Go 1.24+, self-contained)
   ```
   docker pull ghcr.io/gythialy/golang-cross:latest            # = newest -trixie-zig
@@ -40,9 +45,13 @@ smaller, faster, native arm64. See the migration note below.
 
 ### Verifying images
 
-Every published image is keylessly signed with cosign. The signing identity is
-always the workflow that pushed it, at the **release tag** — `vX.Y.Z-N`, with
-the build revision:
+Every published image is keylessly signed with cosign. For anything published
+from September 2026 onward, the signing identity is the workflow that pushed
+it, at the **release tag** — `vX.Y.Z-N`, with the build revision. (Some older
+images do not follow that rule; see the pinning notes below.)
+
+Substitute the version you are actually pinning — the examples below use
+`v1.27.1-0` / `v1.24.13-0`, which are only current as of writing:
 
 ```sh
 # zig images (Go 1.24+) are published by builder.yml. The image tag, the git

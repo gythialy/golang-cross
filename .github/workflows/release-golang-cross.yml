@@ -90,17 +90,24 @@ jobs:
                  --jq 'sort_by(.mergedAt) | last | .number')
             if [ -n "$PR" ]; then
               echo "PR #${PR}"
-              # The heading is written as "### Pending releases", but match any
-              # heading level so a change of level does not silently yield an
-              # empty list, and terminate the range at the next heading of any
-              # level: the old terminator /^## / never matched the
-              # "### How to release" that follows it, so the range ran to
+              # Collect the majors listed under the "Pending releases" heading.
+              # The old sed range (/## Pending releases/,/^## /) never matched
+              # the "### How to release" heading that follows, so it ran to
               # end-of-body and scraped every later list item as a pending
-              # major. (sed evaluates the end address from the line after the
-              # start, so /^#/ cannot match the start heading itself.)
-              VERSIONS=$(gh pr view "$PR" --json body --jq '.body' \
-                | sed -n '/^#\{1,\} Pending releases/,/^#/p' \
-                | grep '^[[:space:]]*-' | awk '{print $2}' | paste -sd, -)
+              # major. Terminating on a looser /^#/ instead would break the
+              # other way: any hash at column 0 -- a fenced shell comment, a
+              # "#hashtag" -- would truncate the list early and silently
+              # release fewer majors than the PR asked for.
+              #
+              # So: skip fenced blocks entirely, treat any heading level as a
+              # section boundary, and stay "inside" only while the current
+              # heading is Pending releases.
+              VERSIONS=$(gh pr view "$PR" --json body --jq '.body' | awk '
+                /^```/                     { fence = !fence; next }
+                fence                      { next }
+                /^#+ /                     { inside = ($0 ~ /^#+[[:space:]]+Pending releases[[:space:]]*$/); next }
+                inside && /^[[:space:]]*-/ { if ($2 != "") print $2 }
+              ' | paste -sd, -)
             fi
           fi
 
