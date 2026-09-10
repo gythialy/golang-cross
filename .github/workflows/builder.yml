@@ -95,7 +95,6 @@ jobs:
         id: set-matrix
         env:
           VERSION: ${{ inputs.version }}
-          LATEST_MAJOR: ${{ inputs.latest_major }}
         run: |
           # Each version x codename x builder; the comma-separated version
           # input scopes the build, matrix_tools dedupes to version x codename
@@ -112,6 +111,8 @@ jobs:
 
       - name: Resolve latest major
         id: latest
+        env:
+          LATEST_MAJOR: ${{ inputs.latest_major }}
         run: |
           if [ -n "$LATEST_MAJOR" ]; then
             echo "major=$LATEST_MAJOR" >> "$GITHUB_OUTPUT"

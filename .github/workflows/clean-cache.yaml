@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read  # read: actions/checkout, for scripts/clean-cache.sh
       actions: write  # write: deletes Actions cache entries (the whole point of this workflow)
 
     steps:

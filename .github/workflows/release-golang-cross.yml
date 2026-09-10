@@ -46,6 +46,7 @@ jobs:
 
     permissions:
       contents: read
+      pull-requests: read  # read: gh pr list/view, to scrape the Pending releases list
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -271,9 +272,13 @@ jobs:
           echo "Matrix: ${MATRIX}"
 
   build-builder:
+    # A reusable workflow cannot elevate beyond its caller, so this has to
+    # cover everything builder.yml's own jobs request -- including
+    # id-token: write, without which their `cosign sign` fails at runtime.
     permissions:
       contents: read
       packages: write  # write: builder.yml publishes the base images the main image builds FROM
+      id-token: write  # write: keyless cosign signing inside builder.yml
 
     needs: resolve
     if: needs.resolve.outputs.skip != 'true'
