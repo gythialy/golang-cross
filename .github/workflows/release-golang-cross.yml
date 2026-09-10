@@ -75,9 +75,25 @@ jobs:
           # Anyone pinning a digest between the two releases got that orphan,
           # whose cosign cert reads @refs/tags/vX.Y.Z. Only the build-revision
           # tag releases, so the signing identity is always @refs/tags/vX.Y.Z-N.
+          #
+          # Accept ONLY -0, not any -N. The image tag scheme does not model the
+          # build revision: every image tag, BUILDER_TAG and the Dockerfile ARG
+          # hard-code "-0". A vX.Y.Z-1 release would therefore sign
+          # @refs/tags/vX.Y.Z-1 while (re)publishing vX.Y.Z-0-* tags, breaking
+          # the image-tag == git-tag == identity property this workflow exists
+          # to provide. Refuse loudly instead of publishing that mismatch; a
+          # bare vX.Y.Z is the expected companion release, so it is skipped
+          # quietly rather than failing the run.
           TAG="${GITHUB_REF_NAME#v}"
-          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$'; then
-            echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-N); nothing to release"
+          if printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[1-9][0-9]*$'; then
+            echo "Ref ${GITHUB_REF_NAME} carries a non-zero build revision." >&2
+            echo "The image tags this repo publishes hard-code -0, so this run" >&2
+            echo "would sign @refs/tags/${GITHUB_REF_NAME} while publishing" >&2
+            echo "v${TAG%-*}-0-* images. Refusing to publish that mismatch." >&2
+            exit 1
+          fi
+          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-0$'; then
+            echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-0); nothing to release"
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
