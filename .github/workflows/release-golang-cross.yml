@@ -90,15 +90,16 @@ jobs:
                  --jq 'sort_by(.mergedAt) | last | .number')
             if [ -n "$PR" ]; then
               echo "PR #${PR}"
-              # The heading is written as "### Pending releases", so match any
-              # heading level, and terminate the range at the NEXT HEADING OF
-              # ANY LEVEL: the old terminator /^## / never matched the
+              # The heading is written as "### Pending releases", but match any
+              # heading level so a change of level does not silently yield an
+              # empty list, and terminate the range at the next heading of any
+              # level: the old terminator /^## / never matched the
               # "### How to release" that follows it, so the range ran to
               # end-of-body and scraped every later list item as a pending
               # major. (sed evaluates the end address from the line after the
               # start, so /^#/ cannot match the start heading itself.)
               VERSIONS=$(gh pr view "$PR" --json body --jq '.body' \
-                | sed -n '/^#\{2,\} Pending releases/,/^#/p' \
+                | sed -n '/^#\{1,\} Pending releases/,/^#/p' \
                 | grep '^[[:space:]]*-' | awk '{print $2}' | paste -sd, -)
             fi
           fi
