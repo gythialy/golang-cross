@@ -244,11 +244,18 @@ jobs:
           # them with grep '^- ' (indented items broke extraction, #466).
           PENDING=""
           BUILDER_IMAGES=""
+          RELEASE_TAGS=""
           if [ "$TOOLS_ONLY" != "true" ] && [ -n "$UPDATED_MAJORS" ]; then
             for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
               v=$(jq -r --arg m "$m" '.releases[$m].version' versions.json)
               vb="${v#go}"
               PENDING="${PENDING}$(printf '\n- %s (%s)' "$m" "$v")"
+              # Publishing is owned by the vX.Y.Z-N tag (see the header comment
+              # in release-golang-cross.yml), so spell out the exact tags to
+              # create — that is what makes the images appear. Deliberately NOT
+              # a "- " list: this renders after "## Pending releases", which
+              # release-golang-cross.yml scrapes for list items.
+              RELEASE_TAGS="${RELEASE_TAGS}$(printf '\n  v%s-0' "$vb")"
               # A major may list multiple builders (1.24 = osxcross + zig); emit
               # one image line per builder so the release PR body stays accurate.
               # zig majors publish the self-contained golang-cross image with a
@@ -282,7 +289,10 @@ jobs:
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. Run the [release workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/release-golang-cross.yml); it reads this list and builds all pending versions"
+              echo "2. Create a GitHub release for each tag below. Publishing is triggered by the \`vX.Y.Z-N\` release and nothing else — merging this PR does **not** publish images, and every published image is signed with the identity \`…@refs/tags/vX.Y.Z-N\`:"
+              printf '%s\n' "${RELEASE_TAGS}"
+              echo
+              echo "> Do not create a bare \`vX.Y.Z\` release (without the \`-N\`) — it is ignored by the release workflow."
             } > /tmp/pr-body.md
             TITLE="🤖 bump go to ${BUMPED_VERSIONS} and tools"
           else
@@ -293,7 +303,12 @@ jobs:
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. Run the [release workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/release-golang-cross.yml) to publish the main \`golang-cross\` Docker image"
+              echo "2. A tools-only bump introduces no new Go version, so there is no new \`vX.Y.Z-N\` tag to release. Dispatch the [release workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/release-golang-cross.yml) **against the existing release tag** so the images keep a tag-based signing identity:"
+              echo '   ```'
+              echo "   gh workflow run release-golang-cross.yml --ref v${GO_VER}-0"
+              echo '   ```'
+              echo
+              echo "> This re-pushes the same \`v${GO_VER}-0-*\` image tags with a new digest; the previous digest stays published but untagged."
             } > /tmp/pr-body.md
             TITLE="🤖 update tool dependencies"
           fi

@@ -17,12 +17,16 @@ smaller, faster, native arm64. See the migration note below.
 
 - `golang-cross` — zig toolchain (Go 1.24+, self-contained)
   ```
-  docker pull ghcr.io/gythialy/golang-cross:latest            # = v1.26.6-0-trixie-zig
+  docker pull ghcr.io/gythialy/golang-cross:latest            # = newest -trixie-zig
   docker pull ghcr.io/gythialy/golang-cross:1.26-zig
   docker pull ghcr.io/gythialy/golang-cross:1.25-zig
   docker pull ghcr.io/gythialy/golang-cross:1.24-zig          # Go 1.24 on zig
-  docker pull ghcr.io/gythialy/golang-cross:v1.26.6-0-trixie-zig
+  docker pull ghcr.io/gythialy/golang-cross:v1.27.1-0-trixie-zig
+  docker pull ghcr.io/gythialy/golang-cross:v1.27.1-0         # = the git release tag
   ```
+  `vX.Y.Z-N` (no codename) is an alias for `vX.Y.Z-N-trixie-zig`, named to match
+  the git tag and GitHub release that published it — the tag to use when you
+  want the image and its cosign identity to reference the same string.
 - `golang-cross` — osxcross toolchain (Go 1.24 only, legacy)
   ```
   docker pull ghcr.io/gythialy/golang-cross:1.24
@@ -33,6 +37,36 @@ smaller, faster, native arm64. See the migration note below.
   docker pull ghcr.io/gythialy/golang-cross-builder:1.24
   docker pull ghcr.io/gythialy/golang-cross-builder:v1.24.13-0-trixie
   ```
+
+### Verifying images
+
+Every published image is keylessly signed with cosign. The signing identity is
+always the workflow that pushed it, at the **release tag** — `vX.Y.Z-N`, with
+the build revision:
+
+```sh
+# zig images (Go 1.24+) are published by builder.yml. The image tag, the git
+# tag and the identity all read v1.27.1-0:
+cosign verify ghcr.io/gythialy/golang-cross:v1.27.1-0 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity "https://github.com/gythialy/golang-cross/.github/workflows/builder.yml@refs/tags/v1.27.1-0"
+
+# the osxcross main image (Go 1.24) is published by release-golang-cross.yml
+cosign verify ghcr.io/gythialy/golang-cross:v1.24.13-0-trixie \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity "https://github.com/gythialy/golang-cross/.github/workflows/release-golang-cross.yml@refs/tags/v1.24.13-0"
+```
+
+Two things to watch when pinning a digest:
+
+- Use the `-N` build revision in the identity (`v1.27.1-0`), not the bare Go
+  version (`v1.27.1`). A bare `vX.Y.Z` release does not publish anything.
+- Resolve the digest from the tag at the moment you pin it
+  (`crane digest ghcr.io/gythialy/golang-cross:v1.27.1-0-trixie-zig`). Images
+  published before September 2026 were built more than once per release, so
+  some digests from that era are still pullable and validly signed but are no
+  longer what the tag points at — and a few carry an `@refs/heads/main`
+  identity instead of a tag.
 
 ### Build your own
 - Build the shared tools base image (golang + cosign/syft/goreleaser/.../gcloud)

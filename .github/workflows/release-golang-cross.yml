@@ -1,9 +1,18 @@
 name: release golang-cross
 
+# Publishing is owned by the vX.Y.Z-N release tag, and nothing else. Every
+# published image is therefore signed with a cosign identity of
+# `<workflow>@refs/tags/vX.Y.Z-N`, which is what downstreams pin.
+#
+# There used to be a `push: branches: [main]` trigger that published on merge.
+# It made the same image tag get built up to three times per bump (merge, then
+# the vX.Y.Z release, then the vX.Y.Z-N release); because the build is not
+# reproducible each pass pushed a different digest, so the tag moved and the
+# previous digest was left published-but-untagged with a stale signature. Worse,
+# a bump that never got a release (1.25.14, 1.26.7, 1.27.0) ended up with its
+# only signature reading `@refs/heads/main`, which no downstream can pin to a
+# version. Dispatch from the tag ref for a manual re-release.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       versions:
@@ -39,12 +48,38 @@ jobs:
           INPUT_VERSIONS: ${{ inputs.versions }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
+          # Everything this job publishes is signed with the identity of the ref
+          # it runs on, so refuse to publish from a branch: that is how the
+          # `@refs/heads/main` signatures got created. A manual re-release
+          # dispatches against the tag (`gh workflow run ... --ref v1.27.1-0`).
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "Refusing to publish from ${GITHUB_REF} — images would be signed" >&2
+            echo "@${GITHUB_REF} instead of @refs/tags/vX.Y.Z-N. Dispatch against" >&2
+            echo "the release tag instead: gh workflow run ${GITHUB_WORKFLOW_REF%%@*} --ref vX.Y.Z-N" >&2
+            exit 1
+          fi
+
           # Priority: dispatch input > release tag > Pending releases in the
-          # latest merged auto-release PR body (push events skip when none).
+          # latest merged auto-release PR body.
           VERSIONS="$INPUT_VERSIONS"
 
+          # Every bump publishes TWO releases on the same commit — vX.Y.Z and
+          # vX.Y.Z-N — and both fire `release: created`. Building on both ran the
+          # whole matrix twice and, because the rebuild is not reproducible, left
+          # the image tag pointing at the second run's digest while the first
+          # run's (differently signed) digest stayed published but untagged.
+          # Anyone pinning a digest between the two releases got that orphan,
+          # whose cosign cert reads @refs/tags/vX.Y.Z. Only the build-revision
+          # tag releases, so the signing identity is always @refs/tags/vX.Y.Z-N.
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$'; then
+            echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-N); nothing to release"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ -z "$VERSIONS" ] && [ "$EVENT_NAME" = "release" ]; then
-            MAJOR_MINOR="${GITHUB_REF_NAME#v}"; MAJOR_MINOR="${MAJOR_MINOR%.*}"
+            MAJOR_MINOR="${TAG%.*}"
             echo "Release tag: ${GITHUB_REF_NAME} (major.minor: ${MAJOR_MINOR})"
             VERSIONS="$MAJOR_MINOR"
           fi
@@ -55,8 +90,15 @@ jobs:
                  --jq 'sort_by(.mergedAt) | last | .number')
             if [ -n "$PR" ]; then
               echo "PR #${PR}"
+              # The heading is written as "### Pending releases", so match any
+              # heading level, and terminate the range at the NEXT HEADING OF
+              # ANY LEVEL: the old terminator /^## / never matched the
+              # "### How to release" that follows it, so the range ran to
+              # end-of-body and scraped every later list item as a pending
+              # major. (sed evaluates the end address from the line after the
+              # start, so /^#/ cannot match the start heading itself.)
               VERSIONS=$(gh pr view "$PR" --json body --jq '.body' \
-                | sed -n '/## Pending releases/,/^## /p' \
+                | sed -n '/^#\{2,\} Pending releases/,/^#/p' \
                 | grep '^[[:space:]]*-' | awk '{print $2}' | paste -sd, -)
             fi
           fi
@@ -68,16 +110,9 @@ jobs:
 
           echo "Versions to release: ${VERSIONS:-<none>}"
           if [ -z "$VERSIONS" ]; then
-            if [ "$EVENT_NAME" = "push" ]; then
-              echo "No Pending releases in the latest merged auto-release PR; nothing to do"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "No versions to release (no input, no release tag, no Pending releases found)"
-              exit 1
-            fi
-            exit 0
+            echo "No versions to release (no input, no release tag, no Pending releases found)"
+            exit 1
           fi
-          echo "skip=false" >> "$GITHUB_OUTPUT"
 
           # Fail loudly when a requested major has no versions.json entry.
           # The matrix jq silently drops unknown majors, so a stale Pending
@@ -116,14 +151,15 @@ jobs:
           echo "versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
           echo "latest_major=$(jq -r '.supported[-1]' versions.json)" >> "$GITHUB_OUTPUT"
 
-          # Push-triggered runs re-read the Pending list of the latest merged
-          # bot PR on EVERY push to main, and that list lives in a merged PR
-          # body forever — without this guard any later hotfix merge would
-          # rebuild everything it names. Skip only when every expected final
-          # tag already exists in ghcr (a partial release still reruns);
-          # explicit dispatch always rebuilds. A failed tag listing aborts
-          # instead of falling back to a blind full rebuild.
-          if [ "$EVENT_NAME" = "push" ]; then
+          # Re-running a release that already published everything would rebuild
+          # it, and since the build is not reproducible the new digest replaces
+          # the tag and strands the old one — the same orphan-with-a-stale-
+          # signature problem, just from a re-run instead of a second tag. Skip
+          # only when every expected final tag already exists in ghcr (a partial
+          # release still reruns everything); explicit dispatch always rebuilds,
+          # which is the escape hatch for forcing a fresh digest. A failed tag
+          # listing aborts instead of falling back to a blind full rebuild.
+          if [ "$EVENT_NAME" = "release" ]; then
             chmod +x scripts/registry-tags.sh
             fetch_tags() {
               local out
@@ -134,16 +170,24 @@ jobs:
               printf '%s\n' "$out" | sort -u
             }
             TOOLS_TAGS=$(fetch_tags golang-cross-tools)
-            MAIN_ZIG_TAGS=$(fetch_tags golang-cross)
+            MAIN_TAGS=$(fetch_tags golang-cross)
             BUILDER_TAGS=$(fetch_tags golang-cross-builder)
             MISSING=$(echo "$MATRIX" | jq -r '.[] | [.major, .version, .codename, .builder] | @tsv' |
               while read -r major version codename builder; do
                 vb="${version#go}"
-                case "$builder" in
-                  zig)      want="v${vb}-0-${codename}-zig"; pool="$MAIN_ZIG_TAGS" ;;
-                  osxcross) want="v${vb}-0-${codename}";      pool="$BUILDER_TAGS" ;;
-                esac
-                grep -Fxq -- "$want" <<<"$pool" || echo "${major}: ${want}"
+                if [ "$builder" = "zig" ]; then
+                  # zig is self-contained: builder.yml publishes the final image.
+                  want="v${vb}-0-${codename}-zig"
+                  grep -Fxq -- "$want" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:${want}"
+                else
+                  # osxcross needs BOTH the builder base (builder.yml) and the
+                  # main image the release job builds FROM it. Checking only the
+                  # base would let a run where the main image failed count as
+                  # complete and skip forever.
+                  want="v${vb}-0-${codename}"
+                  grep -Fxq -- "$want" <<<"$BUILDER_TAGS" || echo "${major}: golang-cross-builder:${want}"
+                  grep -Fxq -- "$want" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:${want}"
+                fi
                 tools="v${vb}-0-${codename}"
                 grep -Fxq -- "$tools" <<<"$TOOLS_TAGS" || echo "${major}: golang-cross-tools:${tools}"
               done)
@@ -155,6 +199,11 @@ jobs:
             echo "Missing images, rebuilding:"
             echo "$MISSING"
           fi
+
+          # Written exactly once, and only here: the skip=true paths above all
+          # exit immediately. Emitting the key twice leaves which value wins up
+          # to the runner's parser.
+          echo "skip=false" >> "$GITHUB_OUTPUT"
 
           echo "Matrix: ${MATRIX}"
 
