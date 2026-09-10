@@ -207,6 +207,15 @@ jobs:
                   # zig is self-contained: builder.yml publishes the final image.
                   want="v${vb}-0-${codename}-zig"
                   grep -Fxq -- "$want" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:${want}"
+                  # The trixie zig build also owns the codename-less vX.Y.Z-0
+                  # alias. It has to be checked separately or "skip" would not
+                  # mean what it says: if the alias alone went missing (partial
+                  # push, or someone deleting a tag) the codename tag above
+                  # would still be present and the re-run would skip forever,
+                  # never restoring it.
+                  if [ "$codename" = "trixie" ]; then
+                    grep -Fxq -- "v${vb}-0" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:v${vb}-0"
+                  fi
                 else
                   # osxcross needs BOTH the builder base (builder.yml) and the
                   # main image the release job builds FROM it. Checking only the
