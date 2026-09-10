@@ -222,7 +222,13 @@ jobs:
     # FROM below needs them in the registry.
     uses: ./.github/workflows/builder.yml
     with:
-      ref: main
+      # Build from the ref that triggered this release, NOT from main. These
+      # images are signed with an identity of @refs/tags/vX.Y.Z-N, so building
+      # them from main would attest a tag while shipping whatever main happens
+      # to hold — and main moves the moment any other PR merges between the
+      # bump landing and the release being cut. The `release` job below already
+      # checks out the triggering ref; this makes build-builder agree with it.
+      ref: ${{ github.ref }}
       version: ${{ needs.resolve.outputs.versions }}
       latest_major: ${{ needs.resolve.outputs.latest_major }}
       publish_latest: true
