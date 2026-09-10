@@ -52,11 +52,13 @@ jobs:
           # it runs on, so refuse to publish from a branch: that is how the
           # `@refs/heads/main` signatures got created. A manual re-release
           # dispatches against the tag (`gh workflow run ... --ref v1.27.1-0`).
+          # gh workflow run takes a workflow name, id or *file name* -- not the
+          # owner/repo/.github/workflows/... path that GITHUB_WORKFLOW_REF
+          # holds -- so reduce it to the basename or the hints below are
+          # uncopyable.
+          WF="${GITHUB_WORKFLOW_REF%%@*}"; WF="${WF##*/}"
+
           if [ "$GITHUB_REF_TYPE" != "tag" ]; then
-            # gh workflow run takes a workflow name, id or *file name* -- not the
-            # owner/repo/.github/workflows/... path that GITHUB_WORKFLOW_REF
-            # holds -- so reduce it to the basename or the hint is uncopyable.
-            WF="${GITHUB_WORKFLOW_REF%%@*}"; WF="${WF##*/}"
             echo "Refusing to publish from ${GITHUB_REF} — images would be signed" >&2
             echo "@${GITHUB_REF} instead of @refs/tags/vX.Y.Z-N. Dispatch against" >&2
             echo "the release tag instead: gh workflow run ${WF} --ref vX.Y.Z-N" >&2
@@ -93,9 +95,21 @@ jobs:
             exit 1
           fi
           if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-0$'; then
-            echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-0); nothing to release"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            # Quiet skip only for `release: created`, where a bare vX.Y.Z is the
+            # expected companion release and failing would make every bump red.
+            # A workflow_dispatch is someone explicitly asking for a release, so
+            # a green no-op would tell them it worked when nothing shipped --
+            # fail instead, even if they passed inputs.versions.
+            if [ "$EVENT_NAME" = "release" ]; then
+              echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-0); nothing to release"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Refusing to release from ${GITHUB_REF_NAME}: not a build-revision" >&2
+            echo "tag (expected vX.Y.Z-0). Nothing would have been published, so" >&2
+            echo "failing rather than reporting success. Dispatch against the" >&2
+            echo "release tag: gh workflow run ${WF} --ref vX.Y.Z-0" >&2
+            exit 1
           fi
 
           if [ -z "$VERSIONS" ] && [ "$EVENT_NAME" = "release" ]; then
