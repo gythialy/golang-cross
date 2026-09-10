@@ -53,9 +53,13 @@ jobs:
           # `@refs/heads/main` signatures got created. A manual re-release
           # dispatches against the tag (`gh workflow run ... --ref v1.27.1-0`).
           if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            # gh workflow run takes a workflow name, id or *file name* -- not the
+            # owner/repo/.github/workflows/... path that GITHUB_WORKFLOW_REF
+            # holds -- so reduce it to the basename or the hint is uncopyable.
+            WF="${GITHUB_WORKFLOW_REF%%@*}"; WF="${WF##*/}"
             echo "Refusing to publish from ${GITHUB_REF} — images would be signed" >&2
             echo "@${GITHUB_REF} instead of @refs/tags/vX.Y.Z-N. Dispatch against" >&2
-            echo "the release tag instead: gh workflow run ${GITHUB_WORKFLOW_REF%%@*} --ref vX.Y.Z-N" >&2
+            echo "the release tag instead: gh workflow run ${WF} --ref vX.Y.Z-N" >&2
             exit 1
           fi
 

@@ -56,6 +56,26 @@ jobs:
       matrix_tools: ${{ steps.set-matrix.outputs.matrix_tools }}
       latest_major: ${{ steps.latest.outputs.major }}
     steps:
+      # Publishing is owned by the vX.Y.Z-N release tag. release-golang-cross.yml
+      # refuses to run from a branch for that reason, but this workflow is
+      # independently dispatchable AND publishes and signs, so without the same
+      # rule here the invariant is only half enforced: a dispatch from main
+      # would publish images signed @refs/heads/main, which is exactly the
+      # identity that made 1.25.14 / 1.26.7 / 1.27.0 unpinnable.
+      #
+      # The condition mirrors the `push:` expression on the build step below,
+      # so the guard and the actual push can never disagree. push_images: false
+      # is the PR-stage build and stays allowed from a branch: it publishes
+      # none of the images consumers pin.
+      - name: Refuse to publish from a non-tag ref
+        if: inputs.push_images != false && github.ref_type != 'tag'
+        run: |
+          echo "Refusing to publish from ${GITHUB_REF} (${GITHUB_REF_TYPE})." >&2
+          echo "Images would be signed @${GITHUB_REF} instead of" >&2
+          echo "@refs/tags/vX.Y.Z-N. Dispatch against the release tag:" >&2
+          echo "  gh workflow run builder.yml --ref vX.Y.Z-N" >&2
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}

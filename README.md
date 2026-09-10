@@ -45,10 +45,14 @@ the source of truth for what exists.
 
 ### Verifying images
 
-Every published image is keylessly signed with cosign. For anything published
-from September 2026 onward, the signing identity is the workflow that pushed
-it, at the **release tag** — `vX.Y.Z-N`, with the build revision. (Some older
-images do not follow that rule; see the pinning notes below.)
+Every published image is keylessly signed with cosign. For `golang-cross` and
+`golang-cross-builder` images published from September 2026 onward, the signing
+identity is the workflow that pushed it, at the **release tag** — `vX.Y.Z-N`,
+with the build revision. Both workflows that can publish those images refuse to
+do so from a branch ref, so a tag identity is the only one they can produce.
+(Some older images predate that rule; see the pinning notes below. The internal
+`golang-cross-tools` base image is also published during pre-merge builds and
+can legitimately carry a branch identity — it is not meant to be pinned.)
 
 Substitute the version you are actually pinning — the examples below use
 `v1.27.1-0` / `v1.24.13-0`, which are only current as of writing:
