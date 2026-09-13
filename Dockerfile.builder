@@ -5,6 +5,8 @@
 ARG GO_VERSION=1.24.13
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
+# Build revision of the tools base to build FROM -- see Dockerfile.zig.
+ARG REVISION=0
 
 FROM ghcr.io/gythialy/osx-sdk:${OSK_SDK:-macos-13} AS osx-sdk
 
@@ -133,7 +135,7 @@ RUN \
 # ============================================================
 # Based on the shared tools image (golang + cosign/syft/goreleaser/.../gcloud),
 # so the release toolchain is defined in one place (Dockerfile.tools).
-FROM ghcr.io/gythialy/golang-cross-tools:v${GO_VERSION:-1.24.13}-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-tools:v${GO_VERSION:-1.24.13}-${REVISION:-0}-${OS_CODENAME:-trixie}
 
 # Re-declare ARG after FROM to make it available in this stage
 ARG OS_CODENAME=trixie

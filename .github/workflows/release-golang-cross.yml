@@ -122,40 +122,14 @@ jobs:
           REVISION="${TAG##*-}"             # N
           TAG_MAJOR="${TAG_VERSION%.*}"     # X.Y
 
-          if [ -z "$VERSIONS" ] && [ "$EVENT_NAME" = "release" ]; then
-            echo "Release tag: ${GITHUB_REF_NAME} (major.minor: ${TAG_MAJOR}, revision: ${REVISION})"
+          # A release event names one version. So does any ref carrying a
+          # non-zero build revision -- N is meaningless for majors the ref says
+          # nothing about -- so resolve it here rather than reading the Pending
+          # list and then bouncing the dispatcher for asking the wrong thing.
+          if [ -z "$VERSIONS" ] && { [ "$EVENT_NAME" = "release" ] || [ "$REVISION" != "0" ]; }; then
+            echo "Release ref: ${GITHUB_REF_NAME} (major.minor: ${TAG_MAJOR}, revision: ${REVISION})"
             VERSIONS="$TAG_MAJOR"
           fi
-
-          # The revision comes from the ref, which names exactly one Go version,
-          # so it can only be applied to that version's images. A multi-version
-          # run is by definition a fresh bump of each (revision 0) -- the
-          # Pending-releases path after an auto-release PR merges. Refuse the
-          # ambiguous combination rather than stamping one ref's N onto majors
-          # it says nothing about.
-          if [ "$REVISION" != "0" ] && [ "$VERSIONS" != "$TAG_MAJOR" ]; then
-            echo "Ref ${GITHUB_REF_NAME} carries build revision ${REVISION}, which applies" >&2
-            echo "only to ${TAG_MAJOR}, but this run would release: ${VERSIONS}." >&2
-            echo "Release one version per revision tag, or dispatch from a -0 tag" >&2
-            echo "to rebuild several at revision 0." >&2
-            exit 1
-          fi
-
-          # Pinning by tag only works if the tag's version is the one that gets
-          # built. versions.json is the source of the Go version, so a ref naming
-          # a different one -- tag cut before the manifest was bumped, or after
-          # it moved on -- must fail rather than publish vX.Y.Z-N images built
-          # from some other X.Y.Z.
-          if [ "$VERSIONS" = "$TAG_MAJOR" ]; then
-            MANIFEST_VERSION=$(jq -r --arg m "$TAG_MAJOR" '.releases[$m].version // empty' versions.json)
-            if [ -n "$MANIFEST_VERSION" ] && [ "${MANIFEST_VERSION#go}" != "$TAG_VERSION" ]; then
-              echo "Ref ${GITHUB_REF_NAME} names Go ${TAG_VERSION}, but versions.json has" >&2
-              echo "${MANIFEST_VERSION} for ${TAG_MAJOR}. Publishing would tag images" >&2
-              echo "v${TAG_VERSION}-${REVISION}-* built from ${MANIFEST_VERSION}." >&2
-              exit 1
-            fi
-          fi
-          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
 
           if [ -z "$VERSIONS" ]; then
             echo "Reading Pending releases from latest merged auto-release PR..."
@@ -194,6 +168,53 @@ jobs:
             echo "No versions to release (no input, no release tag, no Pending releases found)"
             exit 1
           fi
+
+          # Everything below runs on the normalized, resolved list -- these
+          # guards used to sit above the Pending-releases read and the
+          # whitespace strip, so they judged a value that was often empty or
+          # space-padded and refused runs that were in fact well formed.
+
+          # The images this run publishes are signed @refs/tags/vX.Y.Z-N, so the
+          # version the ref names has to be one of the versions actually built.
+          # Otherwise `--ref v1.27.1-0 -f versions=1.26` publishes 1.26 images
+          # carrying a 1.27.1 identity, and nothing the ref names is built.
+          case ",${VERSIONS}," in
+            *",${TAG_MAJOR},"*) ;;
+            *)
+              echo "Ref ${GITHUB_REF_NAME} names ${TAG_MAJOR}, but this run would release:" >&2
+              echo "${VERSIONS}. The images would be signed @refs/tags/${GITHUB_REF_NAME}" >&2
+              echo "while ${TAG_MAJOR} is never built. Dispatch from a ref naming one of" >&2
+              echo "the versions being released." >&2
+              exit 1
+              ;;
+          esac
+
+          # A non-zero revision is a property of one version's images, so it
+          # cannot be stamped onto the other majors in a multi-version run.
+          # Those are fresh bumps at revision 0 by definition -- the
+          # Pending-releases path after an auto-release PR merges.
+          if [ "$REVISION" != "0" ] && [ "$VERSIONS" != "$TAG_MAJOR" ]; then
+            echo "Ref ${GITHUB_REF_NAME} carries build revision ${REVISION}, which applies" >&2
+            echo "only to ${TAG_MAJOR}, but this run would release: ${VERSIONS}." >&2
+            echo "Release one version per revision tag, or dispatch from a -0 tag" >&2
+            echo "to rebuild several at revision 0." >&2
+            exit 1
+          fi
+
+          # Pinning by tag only works if the tag's version is the one that gets
+          # built. versions.json is the source of the Go version, so a ref naming
+          # a different one -- tag cut before the manifest was bumped, or after
+          # it moved on -- must fail rather than publish vX.Y.Z-N images built
+          # from some other X.Y.Z. TAG_MAJOR is guaranteed present by the
+          # membership check above, so this now runs on every path.
+          MANIFEST_VERSION=$(jq -r --arg m "$TAG_MAJOR" '.releases[$m].version // empty' versions.json)
+          if [ -n "$MANIFEST_VERSION" ] && [ "${MANIFEST_VERSION#go}" != "$TAG_VERSION" ]; then
+            echo "Ref ${GITHUB_REF_NAME} names Go ${TAG_VERSION}, but versions.json has" >&2
+            echo "${MANIFEST_VERSION} for ${TAG_MAJOR}. Publishing would tag images" >&2
+            echo "v${TAG_VERSION}-${REVISION}-* built from ${MANIFEST_VERSION}." >&2
+            exit 1
+          fi
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
 
           # Fail loudly when a requested major has no versions.json entry.
           # The matrix jq silently drops unknown majors, so a stale Pending

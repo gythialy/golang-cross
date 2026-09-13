@@ -23,12 +23,17 @@
 ARG GO_VERSION=1.27.1
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
+# Build revision of the tools base to build FROM. Must match the revision this
+# image is being published as, or a vX.Y.Z-1 image would be assembled from the
+# vX.Y.Z-0 toolchain while its tag claims a rebuild. Defaults to 0 so local
+# `docker build` and the README recipes keep working.
+ARG REVISION=0
 
 FROM ghcr.io/gythialy/osx-sdk:${OSK_SDK:-macos-13} AS osx-sdk
 
 # The release tools (cosign/syft/goreleaser/.../gcloud) come from the shared
 # golang-cross-tools base; this image only adds zig + the macOS SDK.
-FROM ghcr.io/gythialy/golang-cross-tools:v${GO_VERSION}-0-${OS_CODENAME:-trixie}
+FROM ghcr.io/gythialy/golang-cross-tools:v${GO_VERSION}-${REVISION:-0}-${OS_CODENAME:-trixie}
 
 # Re-declare ARG after FROM to make it available in this stage
 ARG OS_CODENAME=trixie
