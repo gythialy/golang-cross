@@ -42,6 +42,7 @@ jobs:
       matrix_osxcross: ${{ steps.resolve.outputs.matrix_osxcross }}
       latest_major: ${{ steps.resolve.outputs.latest_major }}
       versions: ${{ steps.resolve.outputs.versions }}
+      revision: ${{ steps.resolve.outputs.revision }}
       skip: ${{ steps.resolve.outputs.skip }}
 
     permissions:
@@ -91,44 +92,45 @@ jobs:
           # whose cosign cert reads @refs/tags/vX.Y.Z. Only the build-revision
           # tag releases, so the signing identity is always @refs/tags/vX.Y.Z-N.
           #
-          # Accept ONLY -0, not any -N. The image tag scheme does not model the
-          # build revision: every image tag, BUILDER_TAG and the Dockerfile ARG
-          # hard-code "-0". A vX.Y.Z-1 release would therefore sign
-          # @refs/tags/vX.Y.Z-1 while (re)publishing vX.Y.Z-0-* tags, breaking
-          # the image-tag == git-tag == identity property this workflow exists
-          # to provide. Refuse loudly instead of publishing that mismatch; a
-          # bare vX.Y.Z is the expected companion release, so it is skipped
-          # quietly rather than failing the run.
+          # N is the image BUILD REVISION: the same Go version rebuilt, e.g.
+          # after a tool bump. It is threaded through every image tag, so
+          # v1.27.1-1 publishes v1.27.1-1-trixie-zig plus the v1.27.1-1 alias,
+          # which is how v1.17.5-4, v1.20.5-1 and 24 other historical tags were
+          # published. An earlier revision of this workflow hard-coded -0 and
+          # rejected any other N, which regressed that and broke the v1.27.1-1
+          # release.
+          # The revision must be canonical: -0 and -00 would otherwise be two
+          # distinct image tags for the same build revision.
           TAG="${GITHUB_REF_NAME#v}"
-          if printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[1-9][0-9]*$'; then
-            echo "Ref ${GITHUB_REF_NAME} carries a non-zero build revision." >&2
-            echo "The image tags this repo publishes hard-code -0, so this run" >&2
-            echo "would sign @refs/tags/${GITHUB_REF_NAME} while publishing" >&2
-            echo "v${TAG%-*}-0-* images. Refusing to publish that mismatch." >&2
-            exit 1
-          fi
-          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-0$'; then
+          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-(0|[1-9][0-9]*)$'; then
             # Quiet skip only for `release: created`, where a bare vX.Y.Z is the
             # expected companion release and failing would make every bump red.
             # A workflow_dispatch is someone explicitly asking for a release, so
             # a green no-op would tell them it worked when nothing shipped --
             # fail instead, even if they passed inputs.versions.
             if [ "$EVENT_NAME" = "release" ]; then
-              echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-0); nothing to release"
+              echo "Ref ${GITHUB_REF_NAME} is not a build-revision tag (expected vX.Y.Z-N); nothing to release"
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Refusing to release from ${GITHUB_REF_NAME}: not a build-revision" >&2
-            echo "tag (expected vX.Y.Z-0). Nothing would have been published, so" >&2
+            echo "tag (expected vX.Y.Z-N). Nothing would have been published, so" >&2
             echo "failing rather than reporting success. Dispatch against the" >&2
-            echo "release tag: gh workflow run ${WF} --ref vX.Y.Z-0" >&2
+            echo "release tag: gh workflow run ${WF} --ref vX.Y.Z-N" >&2
             exit 1
           fi
 
-          if [ -z "$VERSIONS" ] && [ "$EVENT_NAME" = "release" ]; then
-            MAJOR_MINOR="${TAG%.*}"
-            echo "Release tag: ${GITHUB_REF_NAME} (major.minor: ${MAJOR_MINOR})"
-            VERSIONS="$MAJOR_MINOR"
+          TAG_VERSION="${TAG%-*}"           # X.Y.Z
+          REVISION="${TAG##*-}"             # N
+          TAG_MAJOR="${TAG_VERSION%.*}"     # X.Y
+
+          # A release event names one version. So does any ref carrying a
+          # non-zero build revision -- N is meaningless for majors the ref says
+          # nothing about -- so resolve it here rather than reading the Pending
+          # list and then bouncing the dispatcher for asking the wrong thing.
+          if [ -z "$VERSIONS" ] && { [ "$EVENT_NAME" = "release" ] || [ "$REVISION" != "0" ]; }; then
+            echo "Release ref: ${GITHUB_REF_NAME} (major.minor: ${TAG_MAJOR}, revision: ${REVISION})"
+            VERSIONS="$TAG_MAJOR"
           fi
 
           if [ -z "$VERSIONS" ]; then
@@ -168,6 +170,53 @@ jobs:
             echo "No versions to release (no input, no release tag, no Pending releases found)"
             exit 1
           fi
+
+          # Everything below runs on the normalized, resolved list -- these
+          # guards used to sit above the Pending-releases read and the
+          # whitespace strip, so they judged a value that was often empty or
+          # space-padded and refused runs that were in fact well formed.
+
+          # The images this run publishes are signed @refs/tags/vX.Y.Z-N, so the
+          # version the ref names has to be one of the versions actually built.
+          # Otherwise `--ref v1.27.1-0 -f versions=1.26` publishes 1.26 images
+          # carrying a 1.27.1 identity, and nothing the ref names is built.
+          case ",${VERSIONS}," in
+            *",${TAG_MAJOR},"*) ;;
+            *)
+              echo "Ref ${GITHUB_REF_NAME} names ${TAG_MAJOR}, but this run would release:" >&2
+              echo "${VERSIONS}. The images would be signed @refs/tags/${GITHUB_REF_NAME}" >&2
+              echo "while ${TAG_MAJOR} is never built. Dispatch from a ref naming one of" >&2
+              echo "the versions being released." >&2
+              exit 1
+              ;;
+          esac
+
+          # A non-zero revision is a property of one version's images, so it
+          # cannot be stamped onto the other majors in a multi-version run.
+          # Those are fresh bumps at revision 0 by definition -- the
+          # Pending-releases path after an auto-release PR merges.
+          if [ "$REVISION" != "0" ] && [ "$VERSIONS" != "$TAG_MAJOR" ]; then
+            echo "Ref ${GITHUB_REF_NAME} carries build revision ${REVISION}, which applies" >&2
+            echo "only to ${TAG_MAJOR}, but this run would release: ${VERSIONS}." >&2
+            echo "Release one version per revision tag, or dispatch from a -0 tag" >&2
+            echo "to rebuild several at revision 0." >&2
+            exit 1
+          fi
+
+          # Pinning by tag only works if the tag's version is the one that gets
+          # built. versions.json is the source of the Go version, so a ref naming
+          # a different one -- tag cut before the manifest was bumped, or after
+          # it moved on -- must fail rather than publish vX.Y.Z-N images built
+          # from some other X.Y.Z. TAG_MAJOR is guaranteed present by the
+          # membership check above, so this now runs on every path.
+          MANIFEST_VERSION=$(jq -r --arg m "$TAG_MAJOR" '.releases[$m].version // empty' versions.json)
+          if [ -n "$MANIFEST_VERSION" ] && [ "${MANIFEST_VERSION#go}" != "$TAG_VERSION" ]; then
+            echo "Ref ${GITHUB_REF_NAME} names Go ${TAG_VERSION}, but versions.json has" >&2
+            echo "${MANIFEST_VERSION} for ${TAG_MAJOR}. Publishing would tag images" >&2
+            echo "v${TAG_VERSION}-${REVISION}-* built from ${MANIFEST_VERSION}." >&2
+            exit 1
+          fi
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
 
           # Fail loudly when a requested major has no versions.json entry.
           # The matrix jq silently drops unknown majors, so a stale Pending
@@ -227,32 +276,34 @@ jobs:
             TOOLS_TAGS=$(fetch_tags golang-cross-tools)
             MAIN_TAGS=$(fetch_tags golang-cross)
             BUILDER_TAGS=$(fetch_tags golang-cross-builder)
+            # REVISION is read inside the pipeline's subshell below.
+            export REVISION
             MISSING=$(echo "$MATRIX" | jq -r '.[] | [.major, .version, .codename, .builder] | @tsv' |
               while read -r major version codename builder; do
                 vb="${version#go}"
                 if [ "$builder" = "zig" ]; then
                   # zig is self-contained: builder.yml publishes the final image.
-                  want="v${vb}-0-${codename}-zig"
+                  want="v${vb}-${REVISION}-${codename}-zig"
                   grep -Fxq -- "$want" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:${want}"
-                  # The trixie zig build also owns the codename-less vX.Y.Z-0
+                  # The trixie zig build also owns the codename-less vX.Y.Z-N
                   # alias. It has to be checked separately or "skip" would not
                   # mean what it says: if the alias alone went missing (partial
                   # push, or someone deleting a tag) the codename tag above
                   # would still be present and the re-run would skip forever,
                   # never restoring it.
                   if [ "$codename" = "trixie" ]; then
-                    grep -Fxq -- "v${vb}-0" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:v${vb}-0"
+                    grep -Fxq -- "v${vb}-${REVISION}" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:v${vb}-${REVISION}"
                   fi
                 else
                   # osxcross needs BOTH the builder base (builder.yml) and the
                   # main image the release job builds FROM it. Checking only the
                   # base would let a run where the main image failed count as
                   # complete and skip forever.
-                  want="v${vb}-0-${codename}"
+                  want="v${vb}-${REVISION}-${codename}"
                   grep -Fxq -- "$want" <<<"$BUILDER_TAGS" || echo "${major}: golang-cross-builder:${want}"
                   grep -Fxq -- "$want" <<<"$MAIN_TAGS" || echo "${major}: golang-cross:${want}"
                 fi
-                tools="v${vb}-0-${codename}"
+                tools="v${vb}-${REVISION}-${codename}"
                 grep -Fxq -- "$tools" <<<"$TOOLS_TAGS" || echo "${major}: golang-cross-tools:${tools}"
               done)
             if [ -z "$MISSING" ]; then
@@ -294,6 +345,7 @@ jobs:
       # checks out the triggering ref; this makes build-builder agree with it.
       ref: ${{ github.ref }}
       version: ${{ needs.resolve.outputs.versions }}
+      revision: ${{ needs.resolve.outputs.revision }}
       latest_major: ${{ needs.resolve.outputs.latest_major }}
       publish_latest: true
       push_images: true
@@ -335,10 +387,11 @@ jobs:
         id: params
         env:
           MATRIX_VERSION: ${{ matrix.version }}
+          REVISION: ${{ needs.resolve.outputs.revision }}
         run: |
           GO_VERSION="$MATRIX_VERSION"
           echo "go_version_bare=${GO_VERSION#go}" >> "$GITHUB_OUTPUT"
-          echo "builder_tag=v${GO_VERSION#go}-0" >> "$GITHUB_OUTPUT"
+          echo "builder_tag=v${GO_VERSION#go}-${REVISION}" >> "$GITHUB_OUTPUT"
           # Only the osxcross main image builds here, so the Dockerfile is fixed.
           echo "dockerfile=Dockerfile" >> "$GITHUB_OUTPUT"
 
@@ -348,7 +401,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross
           tags: |
-            type=raw,value=v${{ steps.params.outputs.go_version_bare }}-0-${{ matrix.codename }}
+            type=raw,value=v${{ steps.params.outputs.go_version_bare }}-${{ needs.resolve.outputs.revision }}-${{ matrix.codename }}
             type=raw,value=${{ matrix.major }}
 
       - name: Login to GitHub Container Registry
@@ -403,9 +456,10 @@ jobs:
         if: matrix.codename == 'trixie'
         env:
           GO_BARE: ${{ steps.params.outputs.go_version_bare }}
+          REVISION: ${{ needs.resolve.outputs.revision }}
           REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
         run: |
           cd example/sqlite-example
-          IMAGE="ghcr.io/${REPO_OWNER}/golang-cross:v${GO_BARE}-0-trixie"
+          IMAGE="ghcr.io/${REPO_OWNER}/golang-cross:v${GO_BARE}-${REVISION}-trixie"
           echo "testing with ${IMAGE}"
           make smoke-test IMAGE="${IMAGE}" CONFIG=".goreleaser.yml"

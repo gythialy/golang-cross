@@ -29,6 +29,10 @@ on:  # zizmor: ignore[concurrency-limits]
         description: Push built images to the registry (default true; false = build locally for smoke-test only).
         type: boolean
         required: false
+      revision:
+        description: Image build revision N used in the vX.Y.Z-N image tags (default 0). release-golang-cross.yml passes the N from the release tag.
+        type: string
+        required: false
   workflow_call:
     inputs:
       ref:
@@ -51,6 +55,10 @@ on:  # zizmor: ignore[concurrency-limits]
         description: Push built images to the registry (default true; false = build locally for smoke-test only).
         type: boolean
         required: false
+      revision:
+        description: Image build revision N used in the vX.Y.Z-N image tags (default 0). release-golang-cross.yml passes the N from the release tag.
+        type: string
+        required: false
 
 permissions: {}
 
@@ -65,6 +73,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       matrix_tools: ${{ steps.set-matrix.outputs.matrix_tools }}
       latest_major: ${{ steps.latest.outputs.major }}
+      revision: ${{ steps.scope.outputs.revision }}
     steps:
       # Publishing is owned by the vX.Y.Z-N release tag. release-golang-cross.yml
       # refuses to run from a branch for that reason, but this workflow is
@@ -86,15 +95,130 @@ jobs:
           echo "  gh workflow run builder.yml --ref vX.Y.Z-N" >&2
           exit 1
 
+      # All three jobs check out `inputs.ref || github.ref`, so a dispatch like
+      # `--ref v1.27.1-1 -f ref=main` would build main's tree while tagging and
+      # signing it as v1.27.1-1 -- the same content-vs-identity split that
+      # `ref: main` caused in release-golang-cross.yml before #473, reachable
+      # here through the `ref` input instead. On a publishing run the triggering
+      # tag is the only permitted source.
+      - name: Refuse a ref input that disagrees with the tag
+        if: inputs.push_images != false && inputs.ref != ''
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          case "$INPUT_REF" in
+            "$GITHUB_REF"|"$GITHUB_REF_NAME"|"refs/tags/${GITHUB_REF_NAME}") ;;
+            *)
+              echo "Refusing to publish: ref input '${INPUT_REF}' is not the" >&2
+              echo "triggering tag ${GITHUB_REF_NAME}. The images would be built" >&2
+              echo "from '${INPUT_REF}' but signed @${GITHUB_REF}. Omit the input" >&2
+              echo "and dispatch against the tag you want to publish." >&2
+              exit 1
+              ;;
+          esac
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
           persist-credentials: false
 
+      # On a publishing run the ref is the authority for BOTH the build revision
+      # and which version it applies to. `inputs.revision` has no default, so a
+      # dispatch that follows the message above -- `gh workflow run builder.yml
+      # --ref v1.27.1-1` -- would otherwise resolve to revision 0 and republish
+      # EVERY major's -0 tags, the codename-less aliases and `latest`, all
+      # signed @refs/tags/v1.27.1-1: the orphaned-digest / unpinnable-identity
+      # class this scheme exists to close, reachable from our own error message.
+      # Deriving from the ref makes that message correct rather than a trap.
+      #
+      # Not applied when push_images is false: the pre-merge build publishes
+      # none of the images consumers pin and legitimately runs from a branch.
+      - name: Resolve build revision and version scope
+        id: scope
+        env:
+          INPUT_REVISION: ${{ inputs.revision }}
+          INPUT_VERSION: ${{ inputs.version }}
+          PUBLISHING: ${{ inputs.push_images != false }}
+        run: |
+          REVISION="$INPUT_REVISION"
+          # The matrix jq splits on bare commas, so a stray space would leave a
+          # valid major silently unmatched.
+          VERSION="${INPUT_VERSION// /}"
+
+          if [ "$PUBLISHING" = "true" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-(0|[1-9][0-9]*)$'; then
+              echo "Refusing to publish from ${GITHUB_REF_NAME}: not a build-revision" >&2
+              echo "tag (expected vX.Y.Z-N). The images would carry a cosign identity" >&2
+              echo "naming a ref that no published version corresponds to." >&2
+              exit 1
+            fi
+            TAG_VERSION="${TAG%-*}"                      # X.Y.Z
+            TAG_REVISION="${TAG##*-}"                    # N
+            TAG_MAJOR="${TAG_VERSION%.*}"                # X.Y
+
+            if [ -n "$REVISION" ] && [ "$REVISION" != "$TAG_REVISION" ]; then
+              echo "The revision input (${REVISION}) disagrees with the ref" >&2
+              echo "${GITHUB_REF_NAME}, which carries revision ${TAG_REVISION}." >&2
+              echo "The ref is what signs the images, so it wins -- omit the input." >&2
+              exit 1
+            fi
+            REVISION="$TAG_REVISION"
+
+            # A non-zero revision is a property of one version's images, so it
+            # must not be stamped onto the other majors of an unfiltered run.
+            if [ "$TAG_REVISION" != "0" ]; then
+              if [ -z "$VERSION" ]; then
+                VERSION="$TAG_MAJOR"
+              elif [ "$VERSION" != "$TAG_MAJOR" ]; then
+                echo "Ref ${GITHUB_REF_NAME} carries build revision ${TAG_REVISION}," >&2
+                echo "which applies only to ${TAG_MAJOR}, but version=${VERSION}." >&2
+                echo "Release one version per revision tag." >&2
+                exit 1
+              fi
+            fi
+            # Pinning by tag only works if the tag's version is the one that
+            # gets built. release-golang-cross.yml checks this, but the
+            # standalone publishing path did not: a hand-cut v1.27.1-1 pointing
+            # at a commit whose manifest still says go1.27.0 would publish
+            # v1.27.0-1-* matrix tags under the v1.27.1-1 identity.
+            MANIFEST_VERSION=$(jq -r --arg m "$TAG_MAJOR" '.releases[$m].version // empty' versions.json)
+            if [ -z "$MANIFEST_VERSION" ]; then
+              echo "Ref ${GITHUB_REF_NAME} names ${TAG_MAJOR}, which has no entry in" >&2
+              echo "versions.json at this commit. Nothing would be built for the" >&2
+              echo "version the images would be signed as." >&2
+              exit 1
+            fi
+            if [ "${MANIFEST_VERSION#go}" != "$TAG_VERSION" ]; then
+              echo "Ref ${GITHUB_REF_NAME} names Go ${TAG_VERSION}, but versions.json" >&2
+              echo "at this commit has ${MANIFEST_VERSION} for ${TAG_MAJOR}. Publishing" >&2
+              echo "would tag images v${MANIFEST_VERSION#go}-${REVISION}-* while signing" >&2
+              echo "them @${GITHUB_REF}." >&2
+              exit 1
+            fi
+
+            echo "Publishing ${VERSION:-all supported majors} at revision ${REVISION} from ${GITHUB_REF_NAME}"
+          fi
+
+          REVISION="${REVISION:-0}"
+          # Exact, deliberately not `grep -E '^[0-9]+$'`: grep matches per LINE,
+          # so a multi-line value passes and injects a second entry into the
+          # metadata-action tag list.
+          case "$REVISION" in
+            ''|*[!0-9]*|0?*)
+              echo "revision must be a canonical non-negative integer (no leading" >&2
+              echo "zeros), got: '${REVISION}'" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Build matrix from versions.json
         id: set-matrix
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.scope.outputs.version }}
         run: |
           # Each version x codename x builder; the comma-separated version
           # input scopes the build, matrix_tools dedupes to version x codename
@@ -171,7 +295,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/golang-cross-tools
           tags: |
-            type=raw,value=v${{ steps.tools.outputs.go_bare }}-0-${{ matrix.codename }}
+            type=raw,value=v${{ steps.tools.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }}-${{ matrix.codename }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -264,16 +388,23 @@ jobs:
             echo "tag_suffix=" >> "$GITHUB_OUTPUT"
           fi
 
-      # The last tag mirrors the git release tag verbatim (git v1.27.1-0 ->
-      # image v1.27.1-0), so an image can be pinned with the same string that
-      # published and signed it. Only the trixie zig build publishes it — the
-      # variant `latest` also points at — because a major can ship two codenames
-      # and two toolchains (1.24 = osxcross + zig), and the alias has to resolve
-      # to exactly one of them. It is derived from the matrix version rather than
-      # GITHUB_REF_NAME on purpose: a dispatch can release several majors from a
-      # single tag ref, which names only one of them. The "-0" is the build
-      # revision the auto-release always cuts, so a hand-made vX.Y.Z-1 git tag
-      # would still publish vX.Y.Z-0 here.
+      # The codename-less tag mirrors the git release tag verbatim (git
+      # v1.27.1-1 -> image v1.27.1-1), so an image can be pinned with the same
+      # string that published and signed it. Only the trixie zig build publishes
+      # it — the variant `latest` also points at — because a major can ship two
+      # codenames and two toolchains (1.24 = osxcross + zig), and the alias has
+      # to resolve to exactly one of them.
+      #
+      # The VERSION half comes from the matrix, not from GITHUB_REF_NAME: a
+      # dispatch can release several majors from a single tag ref, which names
+      # only one of them. The REVISION half comes from the caller, defaulting to
+      # 0 so the pre-merge build and a plain dispatch are unaffected;
+      # release-golang-cross.yml passes the N it parsed out of the release tag,
+      # which is what makes a hand-cut vX.Y.Z-1 publish vX.Y.Z-1 images.
+      #
+      # `latest` and the `{major}` aliases follow the most recently PUBLISHED
+      # revision, not the numerically highest: re-running an older revision
+      # moves them back. Cut the next free N instead of rebuilding an old one.
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -281,9 +412,9 @@ jobs:
           images: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/${{ steps.dockerfile.outputs.image }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.publish_latest != false && matrix.gover == needs.load-versions.outputs.latest_major && matrix.codename == 'trixie' }}
-            type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-0-${{ matrix.codename }}${{ steps.dockerfile.outputs.tag_suffix }}
+            type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }}-${{ matrix.codename }}${{ steps.dockerfile.outputs.tag_suffix }}
             type=raw,value=${{ matrix.gover }}${{ steps.dockerfile.outputs.tag_suffix }}
-            type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-0,enable=${{ matrix.builder == 'zig' && matrix.codename == 'trixie' }}
+            type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }},enable=${{ matrix.builder == 'zig' && matrix.codename == 'trixie' }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -309,6 +440,7 @@ jobs:
           platforms: ${{ matrix.builder == 'zig' && inputs.push_images != false && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
             GO_VERSION=${{ steps.dockerfile.outputs.go_bare }}
+            REVISION=${{ needs.load-versions.outputs.revision }}
             OSX_VERSION_MIN=10.13
             OSX_CROSS_COMMIT=ff8d100f3f026b4ffbe4ce96d8aac4ce06f1278b
             OS_CODENAME=${{ matrix.codename }}
@@ -345,8 +477,9 @@ jobs:
         env:
           REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
           GO_BARE: ${{ steps.dockerfile.outputs.go_bare }}
+          REVISION: ${{ needs.load-versions.outputs.revision }}
         run: |
-          IMAGE="ghcr.io/${REPO_OWNER}/golang-cross:v${GO_BARE}-0-trixie-zig"
+          IMAGE="ghcr.io/${REPO_OWNER}/golang-cross:v${GO_BARE}-${REVISION}-trixie-zig"
           echo "smoke-testing ${IMAGE}"
           cd example/sqlite-example && make smoke-test IMAGE="${IMAGE}" CONFIG=.goreleaser.zig.yml
           cd ../openssl-example && make smoke-test IMAGE="${IMAGE}"

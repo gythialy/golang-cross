@@ -32,6 +32,22 @@ the source of truth for what exists.
   `vX.Y.Z-N` (no codename) is an alias for `vX.Y.Z-N-trixie-zig`, named to match
   the git tag and GitHub release that published it — the tag to use when you
   want the image and its cosign identity to reference the same string.
+
+  `N` is the **build revision**: the same Go version rebuilt, for instance after
+  a tool bump. A fresh Go bump publishes `-0`; releasing `vX.Y.Z-1` afterwards
+  publishes `vX.Y.Z-1-trixie-zig`, `vX.Y.Z-1-bookworm-zig` and the `vX.Y.Z-1`
+  alias alongside the `-0` ones, which stay pullable.
+
+  Revisions apply to the osxcross images too, with one difference: `1.24` ships
+  both toolchains, so the codename-less `v1.24.13-1` alias points at the **zig**
+  build. Pin the osxcross images by their codename-suffixed tags —
+  `golang-cross:v1.24.13-1-trixie` and
+  `golang-cross-builder:v1.24.13-1-trixie`.
+
+  Floating tags (`latest`, `1.27-zig`, `1.24`) follow the most recently
+  **published** revision, not the numerically highest — re-releasing an older
+  revision moves them back to it. Cut the next free `N` rather than rebuilding
+  an existing one.
 - `golang-cross` — osxcross toolchain (Go 1.24 only, legacy)
   ```
   docker pull ghcr.io/gythialy/golang-cross:1.24

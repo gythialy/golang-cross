@@ -282,6 +282,21 @@ jobs:
             done
           fi
 
+          # Tools-only: UPDATED_MAJORS is every supported major (a tool bump
+          # rebuilds them all), but a non-zero revision is a single-version
+          # property -- release-golang-cross.yml refuses a -N ref with several
+          # majors. So each updated major needs its OWN revision tag and
+          # release; naming only the newest would leave the others' published
+          # images carrying the old tools with nothing saying so.
+          REVISION_TAGS=""
+          if [ "$TOOLS_ONLY" = "true" ] && [ -n "$UPDATED_MAJORS" ]; then
+            for m in $(echo "$UPDATED_MAJORS" | tr ',' ' '); do
+              v=$(jq -r --arg m "$m" '.releases[$m].version // empty' versions.json)
+              [ -n "$v" ] || continue
+              REVISION_TAGS="${REVISION_TAGS}$(printf '\n   v%s-<next N>' "${v#go}")"
+            done
+          fi
+
           # Aggregated once in detect-and-update (bumped_versions) and used
           # verbatim by the bump commit message too. Fallback: tools-only.
           [ -z "$BUMPED_VERSIONS" ] && BUMPED_VERSIONS="${GO_VER}"
@@ -315,12 +330,14 @@ jobs:
               echo
               echo "### How to release"
               echo "1. Review and merge this PR"
-              echo "2. A tools-only bump introduces no new Go version, so there is no new \`vX.Y.Z-N\` tag to release. Dispatch the [release workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/release-golang-cross.yml) **against the existing release tag** so the images keep a tag-based signing identity:"
+              echo "2. A tools-only bump is a rebuild of the same Go versions, which is exactly what the build revision \`N\` is for. It rebuilds **every** supported major, and a non-zero \`N\` applies to one version at a time, so cut one revision tag per major below and create a release for each — do **not** re-release an existing \`-0\` tag:"
               echo '   ```'
-              echo "   gh workflow run release-golang-cross.yml --ref v${GO_VER}-0"
+              printf '%s\n' "${REVISION_TAGS#$'\n'}"
               echo '   ```'
               echo
-              echo "> This re-pushes the same \`v${GO_VER}-0-*\` image tags with a new digest; the previous digest stays published but untagged."
+              echo "> \`<next N>\` is one past the highest existing revision for that version (if \`v${GO_VER}-0\` is the newest, cut \`v${GO_VER}-1\`). Each release publishes a fresh \`-<N>\` set alongside the existing ones, so no digest is orphaned and no signature goes stale."
+              echo
+              echo "> Releasing only some of them is fine, but the majors you skip keep serving their previous toolchain under their current tags."
             } > /tmp/pr-body.md
             TITLE="🤖 update tool dependencies"
           fi
