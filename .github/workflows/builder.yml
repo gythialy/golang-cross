@@ -95,6 +95,33 @@ jobs:
           echo "  gh workflow run builder.yml --ref vX.Y.Z-N" >&2
           exit 1
 
+      # All three jobs check out `inputs.ref || github.ref`, so a dispatch like
+      # `--ref v1.27.1-1 -f ref=main` would build main's tree while tagging and
+      # signing it as v1.27.1-1 -- the same content-vs-identity split that
+      # `ref: main` caused in release-golang-cross.yml before #473, reachable
+      # here through the `ref` input instead. On a publishing run the triggering
+      # tag is the only permitted source.
+      - name: Refuse a ref input that disagrees with the tag
+        if: inputs.push_images != false && inputs.ref != ''
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          case "$INPUT_REF" in
+            "$GITHUB_REF"|"$GITHUB_REF_NAME"|"refs/tags/${GITHUB_REF_NAME}") ;;
+            *)
+              echo "Refusing to publish: ref input '${INPUT_REF}' is not the" >&2
+              echo "triggering tag ${GITHUB_REF_NAME}. The images would be built" >&2
+              echo "from '${INPUT_REF}' but signed @${GITHUB_REF}. Omit the input" >&2
+              echo "and dispatch against the tag you want to publish." >&2
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
       # On a publishing run the ref is the authority for BOTH the build revision
       # and which version it applies to. `inputs.revision` has no default, so a
       # dispatch that follows the message above -- `gh workflow run builder.yml
@@ -126,8 +153,9 @@ jobs:
               echo "naming a ref that no published version corresponds to." >&2
               exit 1
             fi
-            TAG_REVISION="${TAG##*-}"
-            TAG_MAJOR="${TAG%-*}"; TAG_MAJOR="${TAG_MAJOR%.*}"
+            TAG_VERSION="${TAG%-*}"                      # X.Y.Z
+            TAG_REVISION="${TAG##*-}"                    # N
+            TAG_MAJOR="${TAG_VERSION%.*}"                # X.Y
 
             if [ -n "$REVISION" ] && [ "$REVISION" != "$TAG_REVISION" ]; then
               echo "The revision input (${REVISION}) disagrees with the ref" >&2
@@ -149,6 +177,26 @@ jobs:
                 exit 1
               fi
             fi
+            # Pinning by tag only works if the tag's version is the one that
+            # gets built. release-golang-cross.yml checks this, but the
+            # standalone publishing path did not: a hand-cut v1.27.1-1 pointing
+            # at a commit whose manifest still says go1.27.0 would publish
+            # v1.27.0-1-* matrix tags under the v1.27.1-1 identity.
+            MANIFEST_VERSION=$(jq -r --arg m "$TAG_MAJOR" '.releases[$m].version // empty' versions.json)
+            if [ -z "$MANIFEST_VERSION" ]; then
+              echo "Ref ${GITHUB_REF_NAME} names ${TAG_MAJOR}, which has no entry in" >&2
+              echo "versions.json at this commit. Nothing would be built for the" >&2
+              echo "version the images would be signed as." >&2
+              exit 1
+            fi
+            if [ "${MANIFEST_VERSION#go}" != "$TAG_VERSION" ]; then
+              echo "Ref ${GITHUB_REF_NAME} names Go ${TAG_VERSION}, but versions.json" >&2
+              echo "at this commit has ${MANIFEST_VERSION} for ${TAG_MAJOR}. Publishing" >&2
+              echo "would tag images v${MANIFEST_VERSION#go}-${REVISION}-* while signing" >&2
+              echo "them @${GITHUB_REF}." >&2
+              exit 1
+            fi
+
             echo "Publishing ${VERSION:-all supported majors} at revision ${REVISION} from ${GITHUB_REF_NAME}"
           fi
 
@@ -166,11 +214,6 @@ jobs:
 
           echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-          persist-credentials: false
 
       - name: Build matrix from versions.json
         id: set-matrix
