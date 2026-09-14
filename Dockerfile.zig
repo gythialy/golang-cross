@@ -18,8 +18,10 @@
 #   - zig target must be version-less ("x86_64-macos"); "x86_64-macos.13"
 #     fails with InvalidOperatingSystemVersion on zig 0.16
 
-# NOTE: GO_VERSION is WITHOUT the "go" prefix. It selects the shared
-# golang-cross-tools base image tag (v<GO_VERSION>-0-<OS_CODENAME>).
+# NOTE: GO_VERSION is WITHOUT the "go" prefix. Together with REVISION below it
+# selects the shared golang-cross-tools base image tag
+# (v<GO_VERSION>-<REVISION>-<OS_CODENAME>): GO_VERSION picks the base image,
+# REVISION picks which build of it.
 ARG GO_VERSION=1.27.1
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13

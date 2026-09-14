@@ -39,10 +39,10 @@ the source of truth for what exists.
   alias alongside the `-0` ones, which stay pullable.
 
   Revisions apply to the osxcross images too, with one difference: `1.24` ships
-  both toolchains, so the codename-less alias belongs to zig and the osxcross
-  images carry the revision only in their codename-suffixed tags —
-  `golang-cross:v1.24.13-1-trixie` and `golang-cross-builder:v1.24.13-1-trixie`,
-  with no bare `v1.24.13-1`.
+  both toolchains, so the codename-less `v1.24.13-1` alias points at the **zig**
+  build. Pin the osxcross images by their codename-suffixed tags —
+  `golang-cross:v1.24.13-1-trixie` and
+  `golang-cross-builder:v1.24.13-1-trixie`.
 
   Floating tags (`latest`, `1.27-zig`, `1.24`) follow the most recently
   **published** revision, not the numerically highest — re-releasing an older

@@ -1,7 +1,8 @@
 # golang parameters
-# GO_VERSION is bare (no "go" prefix). It selects the golang-cross-tools base
-# image tag for the osxcross builder — which tracks the osxcross baseline
-# (1.24), NOT the newest major (1.26 is zig and has no builder image).
+# GO_VERSION is bare (no "go" prefix). Together with REVISION below it selects
+# the golang-cross-tools base image tag (v<GO_VERSION>-<REVISION>-<OS_CODENAME>)
+# for the osxcross builder — which tracks the osxcross baseline (1.24), NOT the
+# newest major (1.26 is zig and has no builder image).
 ARG GO_VERSION=1.24.13
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13

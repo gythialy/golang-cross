@@ -99,8 +99,10 @@ jobs:
           # published. An earlier revision of this workflow hard-coded -0 and
           # rejected any other N, which regressed that and broke the v1.27.1-1
           # release.
+          # The revision must be canonical: -0 and -00 would otherwise be two
+          # distinct image tags for the same build revision.
           TAG="${GITHUB_REF_NAME#v}"
-          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$'; then
+          if ! printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-(0|[1-9][0-9]*)$'; then
             # Quiet skip only for `release: created`, where a bare vX.Y.Z is the
             # expected companion release and failing would make every bump red.
             # A workflow_dispatch is someone explicitly asking for a release, so
