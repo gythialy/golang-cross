@@ -28,12 +28,18 @@ PR_BRANCH="${PR_BRANCH:-}"
 CACHES_FILE="$(mktemp)"
 trap 'rm -f "$CACHES_FILE" "${CACHES_FILE}.new"' EXIT
 
+# An empty cache list makes `map(.size_in_bytes) | add` return null (and an
+# empty input makes the command substitution empty); either way the `$((...))`
+# arithmetic below aborts with "unbound variable" under `set -u`.
+total_bytes() { jq -s 'map(.size_in_bytes) | add // 0' "$CACHES_FILE"; }
+cache_count() { jq -s 'length // 0' "$CACHES_FILE"; }
+
 # List all caches: --paginate + --jq emits one JSON object per line.
 gh api "/repos/${REPO}/actions/caches?per_page=100" --paginate \
   --jq '.actions_caches[]' > "$CACHES_FILE"
 
-total_bytes=$(jq -s 'map(.size_in_bytes) | add' "$CACHES_FILE")
-echo "listed $(jq -s 'length' "$CACHES_FILE") caches, $((total_bytes / 1048576)) MB total (quota ${QUOTA_GB} GB)"
+total=$(total_bytes)
+echo "listed $(cache_count) caches, $((total / 1048576)) MB total (quota ${QUOTA_GB} GB)"
 
 delete_cache() {
   local id="$1" out
@@ -74,18 +80,18 @@ while read -r ref; do
 done < <(jq -r 'select(.ref | startswith("refs/pull/")) | .ref' "$CACHES_FILE" | sort -u)
 
 # --- pass 3: quota (LRU, never refs/heads/*) --------------------------
-total_bytes=$(jq -s 'map(.size_in_bytes) | add' "$CACHES_FILE")
+total=$(total_bytes)
 quota_bytes=$((QUOTA_GB * 1024 * 1024 * 1024))
-if [ "$total_bytes" -gt "$quota_bytes" ]; then
-  echo "over quota ($((total_bytes / 1048576)) MB > ${QUOTA_GB} GB): evicting LRU (non-main)"
+if [ "$total" -gt "$quota_bytes" ]; then
+  echo "over quota ($((total / 1048576)) MB > ${QUOTA_GB} GB): evicting LRU (non-main)"
   while read -r id size key; do
-    [ "$total_bytes" -le "$quota_bytes" ] && break
+    [ "$total" -le "$quota_bytes" ] && break
     echo "  evict $((size / 1048576)) MB ${key:0:48}"
     delete_cache "$id"
-    total_bytes=$((total_bytes - size))
+    total=$((total - size))
   done < <(jq -s -r 'sort_by(.last_accessed_at // "1970-01-01T00:00:00Z")
                      | map(select(.ref | startswith("refs/heads/") | not))
                      | .[] | "\(.id) \(.size_in_bytes) \(.key)"' "$CACHES_FILE")
 fi
 
-echo "done: $((total_bytes / 1048576)) MB remaining"
+echo "done: $((total / 1048576)) MB remaining"
