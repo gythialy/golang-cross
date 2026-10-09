@@ -22,7 +22,7 @@
 # selects the shared golang-cross-tools base image tag
 # (v<GO_VERSION>-<REVISION>-<OS_CODENAME>): GO_VERSION picks the base image,
 # REVISION picks which build of it.
-ARG GO_VERSION=1.27.1
+ARG GO_VERSION=1.27.2
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
 # Build revision of the tools base to build FROM. Must match the revision this
@@ -39,7 +39,7 @@ FROM ghcr.io/gythialy/golang-cross-tools:v${GO_VERSION}-${REVISION:-0}-${OS_CODE
 
 # Re-declare ARG after FROM to make it available in this stage
 ARG OS_CODENAME=trixie
-ARG ZIG_VERSION=0.16.0
+ARG ZIG_VERSION=0.17.0
 ARG TARGETARCH
 
 LABEL maintainer="Goren G<gythialy.koo+github@gmail.com>"
