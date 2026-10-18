@@ -1,0 +1,117 @@
+name: release drift check
+
+# versions.json names the Go patch every supported major builds from, but
+# nothing tied it to reality: a version can be bumped and merged while nobody
+# ever cuts the vX.Y.Z-N release that publishes it. Since #473 that release tag
+# is the only publisher, so a supported line can drift two ways — images that
+# were never built (1.24 → go1.24.13), or images left behind by the retired
+# push-triggered publisher with no tag to pin them to (1.25 → go1.25.14, signed
+# @refs/heads/main). Both stayed green (#483).
+#
+# This keeps ONE tracking issue open while a supported major is not properly
+# released, and closes it again once versions.json and reality agree. Drift
+# deliberately does not fail the job: a red scheduled run is easy to ignore, an
+# open issue is not — and failing would make "drift" and "github/ghcr is down"
+# look identical. A registry that cannot be read does fail, because that is a
+# broken check rather than a finding.
+on:
+  schedule:
+    # Weekly, an hour after the Monday auto-release run (06:00 UTC) opens its
+    # PR, so a bump that lands without a release is noticed the same week.
+    - cron: '0 7 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - versions.json  # a bump landing on main, before anyone cuts its release
+  workflow_run:
+    # Re-check when a release finishes, so the issue closes as soon as the
+    # images exist instead of waiting for the next scheduled run. Nothing from
+    # the triggering run is checked out or executed — the default branch is,
+    # and this job only reads versions.json and edits one issue.
+    workflows: ['release golang-cross']
+    types: [completed]
+  workflow_dispatch:
+
+# Only the newest result matters, and two concurrent runs would race the same
+# issue body.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read  # read: actions/checkout, for versions.json and scripts/
+      issues: write   # write: opens, edits and closes the single tracking issue
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-tags: true  # read: the release-tag half of the check (local fallback)
+
+      - name: Compare versions.json with the registry
+        id: drift
+        run: |
+          # 0 = clean, 1 = drift, 2 = the registry could not be read. The table
+          # is written either way so the issue body can reuse it verbatim.
+          rc=0
+          bash scripts/release-drift.sh --markdown >drift.md || rc=$?
+          case "${rc}" in
+            0) drift=false ;;
+            1) drift=true ;;
+            *)
+              echo "release-drift.sh could not read the registry (rc=${rc})" >&2
+              exit "${rc}"
+              ;;
+          esac
+          echo "drift=${drift}" >>"$GITHUB_OUTPUT"
+          cat drift.md
+
+      - name: Open or refresh the tracking issue
+        if: steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE='Release drift: a supported Go version is not properly released'
+          export TITLE  # read by jq as env.TITLE; keeps $ out of a single-quoted filter
+          {
+            echo "A major in \`versions.json\`'s \`supported\` list is not properly released: the registry has no image for the Go patch it pins, or the images exist without a \`vX.Y.Z-N\` release tag to pin them to. Fix it by publishing — \`gh release create vX.Y.Z-0 --target <the bump commit>\` — or by taking the major out of \`supported\`; leaving it listed is the state #483 opened this for."
+            echo
+            cat drift.md
+            echo
+            echo "**missing**: no images and no release tag. **unreleased**: images but no release tag, so they cannot be pinned by version. **failed**: a release tag whose images did not get published."
+            echo
+            echo "Checked \`versions.json\` at $(git rev-parse --short HEAD) by [\`release-drift.yml\`](${RUN_URL})."
+          } >body.md
+          # List rather than search: the issues endpoint has no indexing lag, so
+          # the issue created a minute ago is already visible to the next run.
+          number=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '[.[] | select(.title == env.TITLE) | .number] | first // empty')
+          if [ -n "${number}" ]; then
+            echo "updating issue #${number}"
+            gh issue edit "${number}" --body-file body.md
+          else
+            gh issue create --title "${TITLE}" --body-file body.md --label bug
+          fi
+
+      - name: Close the tracking issue once the drift is gone
+        if: steps.drift.outputs.drift == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE='Release drift: a supported Go version is not properly released'
+          export TITLE  # read by jq as env.TITLE; keeps $ out of a single-quoted filter
+          number=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '[.[] | select(.title == env.TITLE) | .number] | first // empty')
+          if [ -z "${number}" ]; then
+            echo "no open tracking issue; nothing to close"
+            exit 0
+          fi
+          gh issue comment "${number}" --body "Every supported major is now properly released, so the drift is gone. Reopened automatically if versions.json moves ahead of the registry again."
+          gh issue close "${number}"
