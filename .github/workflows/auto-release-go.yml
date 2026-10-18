@@ -208,7 +208,7 @@ jobs:
     # when the newest supported major (1.26) is among them
     # push_images=false: PR stage builds locally for smoke-test, does NOT
     # publish to the registry; the release workflow publishes after merge
-    uses: $/.github/workflows/builder.yml
+    uses: ./.github/workflows/builder.yml
     with:
       ref: ${{ needs.detect-and-update.outputs.branch_name }}
       version: ${{ needs.detect-and-update.outputs.updated_majors }}

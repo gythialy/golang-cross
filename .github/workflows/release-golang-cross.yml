@@ -335,7 +335,7 @@ jobs:
     if: needs.resolve.outputs.skip != 'true'
     # Publish the builder images the PR stage built locally: the main-image
     # FROM below needs them in the registry.
-    uses: $/.github/workflows/builder.yml
+    uses: ./.github/workflows/builder.yml
     with:
       # Build from the ref that triggered this release, NOT from main. These
       # images are signed with an identity of @refs/tags/vX.Y.Z-N, so building
