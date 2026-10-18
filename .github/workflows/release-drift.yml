@@ -3,10 +3,11 @@ name: release drift check
 # versions.json names the Go patch every supported major builds from, but
 # nothing tied it to reality: a version can be bumped and merged while nobody
 # ever cuts the vX.Y.Z-N release that publishes it. Since #473 that release tag
-# is the only publisher, so a supported line can drift two ways — images that
-# were never built (1.24 → go1.24.13), or images left behind by the retired
+# is the only publisher, so a supported line can drift three ways — images that
+# were never built (1.24 → go1.24.13), images left behind by the retired
 # push-triggered publisher with no tag to pin them to (1.25 → go1.25.14, signed
-# @refs/heads/main). Both stayed green (#483).
+# @refs/heads/main), or a release that stopped half way after the tag and the zig
+# legs went out but the osxcross legs did not (#491). All stayed green (#483).
 #
 # This keeps ONE tracking issue open while a supported major is not properly
 # released, and closes it again once versions.json and reality agree. Drift
@@ -85,7 +86,7 @@ jobs:
             echo
             cat drift.md
             echo
-            echo "**missing**: no images and no release tag. **unreleased**: images but no release tag, so they cannot be pinned by version. **failed**: a release tag whose images did not get published."
+            echo "**missing**: no images and no release tag. **unreleased**: images but no release tag, so they cannot be pinned by version. **incomplete**: the release tag exists but part of its expected tag set does not — a half-finished publish."
             echo
             echo "Checked \`versions.json\` at $(git rev-parse --short HEAD) by [\`release-drift.yml\`](${RUN_URL})."
           } >body.md
