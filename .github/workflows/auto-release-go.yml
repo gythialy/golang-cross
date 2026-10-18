@@ -342,6 +342,28 @@ jobs:
             TITLE="🤖 update tool dependencies"
           fi
 
+          # Supported majors that are not properly released (#483). Deliberately
+          # a table under its own heading, not `- ` items under "Pending
+          # releases": release-golang-cross.yml scrapes that list to decide what
+          # a `-0` dispatch builds, and a line nobody released yet is not part of
+          # this run's slice — it only has to be visible to the reviewer.
+          drift_note=""
+          drift_rc=0
+          drift_table=$(bash scripts/release-drift.sh --markdown 2>/dev/null) || drift_rc=$?
+          case "${drift_rc}" in
+            0) drift_note="None — every supported major has images and a release tag." ;;
+            1) drift_note="${drift_table}" ;;
+            *) drift_note="Registry lookup unavailable; see the \`release drift check\` workflow." ;;
+          esac
+          {
+            echo
+            echo "### Unreleased supported versions"
+            echo
+            echo "Majors whose \`versions.json\` Go patch has no images or no \`vX.Y.Z-N\` release tag. They are not part of this bump and each needs its own release:"
+            echo
+            printf '%s\n' "${drift_note}"
+          } >> /tmp/pr-body.md
+
           # Check if PR already exists for this branch
           EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
           if [ -n "$EXISTING_PR" ]; then
