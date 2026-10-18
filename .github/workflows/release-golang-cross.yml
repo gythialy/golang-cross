@@ -432,7 +432,13 @@ jobs:
           context: .
           file: ${{ steps.params.outputs.dockerfile }}
           push: true
-          load: true
+          # Deliberately NOT `load: true`: loading the build into the daemon as
+          # well makes `steps.buildpush.outputs.digest` the local platform
+          # manifest while the pushed tag resolves to the index wrapping it, so
+          # the sign step signs a digest the tag does not point at and
+          # `cosign verify <tag>` finds nothing. That happened to v1.24.13-0's
+          # osxcross images; the smoke test below pulls from the registry, so
+          # nothing needs the image in the daemon.
           build-args: |
             OS_CODENAME=${{ matrix.codename }}
             GO_VERSION=${{ steps.args.outputs.go_arg }}
@@ -450,10 +456,23 @@ jobs:
           fi
           echo "signing ghcr.io/${REPO_OWNER}/golang-cross@${DIGEST}"
           cosign sign --yes "ghcr.io/${REPO_OWNER}/golang-cross@${DIGEST}"
+
+          # Verify by TAG, not by the digest just signed: the digest only proves
+          # *something* was signed, while the tag is what downstreams resolve and
+          # what has to carry the signature. This assertion is what would have
+          # caught the `load: true` mix-up above.
+          TAG="v${GO_BARE}-${REVISION}-${OS_CODENAME}"
+          echo "verifying ghcr.io/${REPO_OWNER}/golang-cross:${TAG}"
+          cosign verify "ghcr.io/${REPO_OWNER}/golang-cross:${TAG}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release-golang-cross.yml@${GITHUB_REF}"
         shell: bash
         env:
           DIGEST: ${{ steps.buildpush.outputs.digest }}
           REPO_OWNER: ${{ steps.get_repo_owner.outputs.repo_owner }}
+          GO_BARE: ${{ steps.params.outputs.go_version_bare }}
+          REVISION: ${{ needs.resolve.outputs.revision }}
+          OS_CODENAME: ${{ matrix.codename }}
 
       # Smoke-test the published osxcross image against the sqlite example.
       # (zig is smoke-tested in builder.yml's build job during PR verification.)
