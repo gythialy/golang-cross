@@ -405,6 +405,15 @@ jobs:
       # `latest` and the `{major}` aliases follow the most recently PUBLISHED
       # revision, not the numerically highest: re-running an older revision
       # moves them back. Cut the next free N instead of rebuilding an old one.
+      #
+      # The codename-less `{major}` and `{major}-zig` aliases need exactly one
+      # owning codename, like the vX.Y.Z-N alias above. They never had one:
+      # emitted by every matrix entry, they were a last-writer-wins race between
+      # the bookworm and trixie legs. Caught while releasing v1.26.9-0 and
+      # v1.27.2-0 — 1.26-zig resolved to the bookworm image while 1.27-zig
+      # resolved to trixie in the same release, and 1.26-zig had flipped from
+      # trixie to bookworm since v1.26.8-0 (#482). Trixie owns them now; the
+      # `{major}-{codename}` float keeps the other leg addressable by name.
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -413,7 +422,8 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ inputs.publish_latest != false && matrix.gover == needs.load-versions.outputs.latest_major && matrix.codename == 'trixie' }}
             type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }}-${{ matrix.codename }}${{ steps.dockerfile.outputs.tag_suffix }}
-            type=raw,value=${{ matrix.gover }}${{ steps.dockerfile.outputs.tag_suffix }}
+            type=raw,value=${{ matrix.gover }}${{ steps.dockerfile.outputs.tag_suffix }},enable=${{ matrix.codename == 'trixie' }}
+            type=raw,value=${{ matrix.gover }}-${{ matrix.codename }}${{ steps.dockerfile.outputs.tag_suffix }}
             type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }},enable=${{ matrix.builder == 'zig' && matrix.codename == 'trixie' }}
 
       - name: Login to GitHub Container Registry
