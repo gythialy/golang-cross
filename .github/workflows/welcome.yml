@@ -1,7 +1,13 @@
 name: Welcome
 
 on:
-  pull_request:
+  # pull_request_target, not pull_request: auto-release opens its PR with the
+  # repository's GITHUB_TOKEN (github-actions[bot], no write access), and GitHub
+  # parks a plain pull_request run as `action_required` until a maintainer
+  # approves it — every single day. This workflow never checks out or runs pull
+  # request content, it only posts a greeting comment, so the write-scoped token
+  # is never exposed to contributor-controlled code.
+  pull_request_target:  # zizmor: ignore[dangerous-triggers]
     branches:
       - main
     types:
