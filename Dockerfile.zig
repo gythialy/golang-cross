@@ -22,7 +22,7 @@
 # selects the shared golang-cross-tools base image tag
 # (v<GO_VERSION>-<REVISION>-<OS_CODENAME>): GO_VERSION picks the base image,
 # REVISION picks which build of it.
-ARG GO_VERSION=1.27.2
+ARG GO_VERSION=1.27.3
 ARG OS_CODENAME=trixie
 ARG OSK_SDK=macos-13
 # Build revision of the tools base to build FROM. Must match the revision this
