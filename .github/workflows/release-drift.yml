@@ -72,6 +72,19 @@ jobs:
           esac
           echo "drift=${drift}" >>"$GITHUB_OUTPUT"
           cat drift.md
+          # The issue body renders copy-pasteable publish commands from the JSON
+          # form. Only needed when there is something to publish, so a clean run
+          # still reads the registry once.
+          if [ "${drift}" = true ]; then
+            json_rc=0
+            bash scripts/release-drift.sh --json >drift.json || json_rc=$?
+            # rc=1 is the drift this run already recorded; anything else means
+            # the registry or the tag list could not be read.
+            if [ "${json_rc}" != 1 ]; then
+              echo "release-drift.sh --json could not read the registry (rc=${json_rc})" >&2
+              exit 2
+            fi
+          fi
 
       - name: Open or refresh the tracking issue
         if: steps.drift.outputs.drift == 'true'
@@ -81,13 +94,54 @@ jobs:
         run: |
           TITLE='Release drift: a supported Go version is not properly released'
           export TITLE  # read by jq as env.TITLE; keeps $ out of a single-quoted filter
+          # Pin every publish command to the commit this check just read: a
+          # later push to main must not place the release tag on a manifest that
+          # pins a different Go patch (release-golang-cross.yml fails such a run
+          # rather than publish mislabelled images, so the command has to carry
+          # the right commit to be useful).
+          sha=$(git rev-parse HEAD)
+          # One command per unpublished major. `incomplete` already has its
+          # release tag and only needs the publish run re-dispatched against
+          # it; `missing` and `unreleased` have no tag yet, so they get a
+          # revision-0 release. The version substring drops the "go" prefix that
+          # versions.json uses.
+          commands=$(jq -r --arg sha "${sha}" '
+            .majors[]
+            | select(.status != "published" and .version != "")
+            | .version[2:] as $bare
+            | if .status == "incomplete" then
+                "gh workflow run release-golang-cross.yml --ref v\($bare)-\(.revision) -f versions=\(.major)"
+              else
+                "gh release create v\($bare)-0 --target \($sha) --title v\($bare)-0 --generate-notes"
+              end' drift.json)
+          # The same releases through the repository helper, which also derives
+          # the notes and the --latest flag. It refuses an existing tag, so only
+          # the lines with no tag yet can use it.
+          script_versions=$(jq -r '[.majors[] | select(.status == "missing" or .status == "unreleased") | .version[2:]] | join(" ")' drift.json)
           {
-            echo "A major in \`versions.json\`'s \`supported\` list is not properly released: the registry has no image for the Go patch it pins, or the images exist without a \`vX.Y.Z-N\` release tag to pin them to. Fix it by publishing — \`gh release create vX.Y.Z-0 --target <the bump commit>\` — or by taking the major out of \`supported\`; leaving it listed is the state #483 opened this for."
+            echo "A major in \`versions.json\`'s \`supported\` list is not properly released: the registry has no image for the Go patch it pins, or the images exist without a \`vX.Y.Z-N\` release tag to pin them to. Fix it by publishing, or by taking the major out of \`supported\`; leaving it listed is the state #483 opened this for."
             echo
             cat drift.md
             echo
             echo "**missing**: no images and no release tag. **unreleased**: images but no release tag, so they cannot be pinned by version. **incomplete**: the release tag exists but part of its expected tag set does not — a half-finished publish."
             echo
+            echo "### Publish"
+            echo
+            echo "Run these from any checkout. \`--target ${sha:0:7}\` is the commit this check read, so cutting the release after main moves on still tags the manifest that pins the patch. One release publishes one major; they may all point at the same commit:"
+            echo
+            echo '```sh'
+            printf '%s\n' "${commands}"
+            echo '```'
+            if [ -n "${script_versions}" ]; then
+              echo
+              echo "Or, from a checkout at that commit, let [\`scripts/release.sh\`](../blob/main/scripts/release.sh) derive the revision, \`--latest\` and the notes:"
+              echo
+              echo '```sh'
+              echo "scripts/release.sh ${script_versions} -t ${sha} --execute"
+              echo '```'
+            fi
+            echo
+            echo "Each release starts \`release-golang-cross.yml\`. This issue closes itself once every supported major is properly released — a publish that stops half way keeps it open and shows up as \`incomplete\` above."
             echo "Checked \`versions.json\` at $(git rev-parse --short HEAD) by [\`release-drift.yml\`](${RUN_URL})."
           } >body.md
           # List rather than search: the issues endpoint has no indexing lag, so
@@ -98,7 +152,7 @@ jobs:
             echo "updating issue #${number}"
             gh issue edit "${number}" --body-file body.md
           else
-            gh issue create --title "${TITLE}" --body-file body.md --label bug
+            gh issue create --title "${TITLE}" --body-file body.md --label release
           fi
 
       - name: Close the tracking issue once the drift is gone

@@ -216,8 +216,11 @@ owned by exactly one codename (trixie), so the two legs cannot race for them.
 
 `release-drift.yml` then re-checks `versions.json` against the registry (weekly,
 after every release, and on `workflow_dispatch`) and keeps a single tracking
-issue open while any supported major is not properly released. Run it by hand
-with:
+issue open while any supported major is not properly released. The issue body
+carries copy-pasteable publish commands, pinned to the commit the check read so a
+release cut later still tags the manifest that pins the patch, and the issue
+closes itself once the publish run finishes with the full expected tag set. Run
+the check by hand with:
 
 ```sh
 bash scripts/release-drift.sh --markdown   # 0 ok, 1 drift, 2 registry unreadable
