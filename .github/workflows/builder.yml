@@ -298,7 +298,7 @@ jobs:
             type=raw,value=v${{ steps.tools.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }}-${{ matrix.codename }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ steps.get_repo_owner.outputs.repo_owner }}
@@ -427,7 +427,7 @@ jobs:
             type=raw,value=v${{ steps.dockerfile.outputs.go_bare }}-${{ needs.load-versions.outputs.revision }},enable=${{ matrix.builder == 'zig' && matrix.codename == 'trixie' }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ steps.get_repo_owner.outputs.repo_owner }}
