@@ -30,8 +30,8 @@
       ]
     },
     "1.26": {
-      "version": "go1.26.10",
-      "sha256": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
+      "version": "go1.26.11",
+      "sha256": "9849f4e04ee35303714e34fbc3ac8ab44ea3e448a95aa182f91e3b9b79c710ec",
       "codenames": [
         "bookworm",
         "trixie"
@@ -41,8 +41,8 @@
       ]
     },
     "1.27": {
-      "version": "go1.27.3",
-      "sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
+      "version": "go1.27.4",
+      "sha256": "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840",
       "codenames": [
         "bookworm",
         "trixie"
